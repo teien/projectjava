@@ -1,0 +1,17 @@
+[
+  {
+    "HardwareType": "CPU",
+    "SensorName": "CPU Package",
+    "Value": 57.0
+  },
+  {
+    "HardwareType": "GPU",
+    "SensorName": "GPU Core",
+    "Value": 45.0
+  },
+  {
+    "HardwareType": "GPU",
+    "SensorName": "GPU Core",
+    "Value": 1.0
+  }
+]
