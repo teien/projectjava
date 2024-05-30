@@ -11,7 +11,6 @@ import java.io.InputStreamReader;
 public class ServiceManager {
     public static double getCpuTemperature() {
         double cpuTemperature = 0.0;
-
         if (!isServiceRunning("HardwareMonitorService")) {
             startService("HardwareMonitorService");
             try {
@@ -47,9 +46,7 @@ public class ServiceManager {
     public static void startService(String serviceName) {
         executeCommand("sc start " + serviceName);
     }
-    public static void stopService(String serviceName) {
-        executeCommand("sc stop " + serviceName);
-    }
+
 
     private static JSONArray readSensorData(String filePath) {
         JSONParser parser = new JSONParser();

@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.io.File;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -19,6 +20,7 @@ public class SystemMonitorUI extends JFrame {
 
     private JLabel timeLabel;
     private JLabel dateLabel;
+    private JLabel weatherLabel;
     private JLabel kernelLabel;
     private JLabel uptimeLabel;
     private JLabel cpuUsageLabel;
@@ -35,6 +37,7 @@ public class SystemMonitorUI extends JFrame {
     private JLabel networkDownloadTotalLabel;
     private JLabel networkUploadTotalLabel;
     private JLabel CpuTemperatureLabel;
+
 
     private HardwareAbstractionLayer hal;
     private OperatingSystem os;
@@ -90,11 +93,11 @@ public class SystemMonitorUI extends JFrame {
 
         timeLabel = createLabel("HH:mm", 36);
         dateLabel = createLabel("EEE, dd MMM yyyy", 18);
+        weatherLabel = createLabel("Weather: --", 14);
         kernelLabel = createLabel("", 14);
         uptimeLabel = createLabel("Uptime: 0h 0m 0s", 14);
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
         cpuUsageLabel = createLabel("CPU Temperature: 0°C", 14);
-        CpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
 
         ramTotalLabel = createLabel("RAM Total: 0 GiB", 14);
         ramInUseLabel = createLabel("In Use: 0 GiB", 14);
@@ -110,6 +113,7 @@ public class SystemMonitorUI extends JFrame {
 
         panel.add(timeLabel);
         panel.add(dateLabel);
+        panel.add(weatherLabel);
         panel.add(createSeparator());
         panel.add(kernelLabel);
         panel.add(uptimeLabel);
@@ -166,7 +170,13 @@ public class SystemMonitorUI extends JFrame {
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                SwingUtilities.invokeLater(() -> updateSystemInfo());
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        updateSystemInfo();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             }
         }, 0, 1000);
     }
@@ -184,7 +194,7 @@ public class SystemMonitorUI extends JFrame {
         return separator;
     }
 
-    private void updateSystemInfo() {
+    private void updateSystemInfo() throws Exception {
         SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy");
         Date now = new Date();
@@ -195,6 +205,12 @@ public class SystemMonitorUI extends JFrame {
         String osName = System.getProperty("os.name").toLowerCase();
         kernelLabel.setText("Computer: " + computerName + " (" + osName + ")");
         uptimeLabel.setText("Uptime: " + formatUptime(os.getSystemUptime()));
+        WeatherByIP.getWeatherInfo();
+        String weatherIcon = WeatherByIP.WeatherInfo.getIconCode();
+        ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
+        weatherLabel.setIcon(icon);
+        weatherLabel.setText("   "+ WeatherByIP.WeatherInfo.getTemperature() + "°C" +"    " + WeatherByIP.WeatherInfo.getCity() );
+
 
         if (showCpu) {
             long[] newTicks = processor.getSystemCpuLoadTicks();
@@ -203,6 +219,8 @@ public class SystemMonitorUI extends JFrame {
             cpuUsageLabel.setText(String.format("CPU Usage: %.1f%%", cpuLoad));
             double cpuTemperature = ServiceManager.getCpuTemperature();
             CpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
+
+
 
         }
 
@@ -256,11 +274,6 @@ public class SystemMonitorUI extends JFrame {
             JFrame dummyFrame = new JFrame();
             SettingUI settingsUI = new SettingUI(dummyFrame);
             settingsUI.setVisible(true);
-            //Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-             //   ServiceManager.stopService("HardwareMonitorService");
-           // }));
-
-
             if (settingsUI.isSettingsAccepted()) {
                 SystemMonitorUI ui = new SystemMonitorUI(
                         settingsUI.isCpuSelected(),
