@@ -22,7 +22,7 @@ public class SystemMonitorUI extends JFrame {
     private JLabel kernelLabel;
     private JLabel uptimeLabel;
     private JLabel cpuUsageLabel;
-    private JLabel cpuFrequencyLabel;
+
     private JLabel ramTotalLabel;
     private JLabel ramInUseLabel;
     private JLabel ramFreeLabel;
@@ -34,6 +34,7 @@ public class SystemMonitorUI extends JFrame {
     private JLabel networkUploadSpeedLabel;
     private JLabel networkDownloadTotalLabel;
     private JLabel networkUploadTotalLabel;
+    private JLabel CpuTemperatureLabel;
 
     private HardwareAbstractionLayer hal;
     private OperatingSystem os;
@@ -42,7 +43,7 @@ public class SystemMonitorUI extends JFrame {
     private NetworkIF networkIF;
     private long lastDownloadBytes;
     private long lastUploadBytes;
-    private long prevAvgFrequency;
+
 
     private final boolean showCpu;
     private final boolean showRam;
@@ -64,7 +65,7 @@ public class SystemMonitorUI extends JFrame {
 
         // Determine the new location of the window
         int w = this.getSize().width;
-        int h = this.getSize().height;
+        //int h = this.getSize().height;
         int x = (dim.width - w);
         int y = 0;
 
@@ -92,6 +93,8 @@ public class SystemMonitorUI extends JFrame {
         kernelLabel = createLabel("", 14);
         uptimeLabel = createLabel("Uptime: 0h 0m 0s", 14);
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
+        cpuUsageLabel = createLabel("CPU Temperature: 0°C", 14);
+        CpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
 
         ramTotalLabel = createLabel("RAM Total: 0 GiB", 14);
         ramInUseLabel = createLabel("In Use: 0 GiB", 14);
@@ -113,6 +116,7 @@ public class SystemMonitorUI extends JFrame {
         panel.add(createSeparator());
         if (showCpu) {
             panel.add(cpuUsageLabel);
+            panel.add(CpuTemperatureLabel);
 
         }
         panel.add(createSeparator());
@@ -145,12 +149,11 @@ public class SystemMonitorUI extends JFrame {
         os = systemInfo.getOperatingSystem();
         processor = hal.getProcessor();
         prevTicks = processor.getSystemCpuLoadTicks();
-        prevAvgFrequency = 0;
-
+        //Net
         List<NetworkIF> networkIFs = systemInfo.getHardware().getNetworkIFs();
         if (!networkIFs.isEmpty()) {
             for (NetworkIF networkIF : networkIFs) {
-                if (networkIF.isConnectorPresent()) {
+                if (networkIF.isConnectorPresent() && networkIF.getIPv4addr().length > 0 && networkIF.getSpeed() > 0 && networkIF.getIfOperStatus().equals(NetworkIF.IfOperStatus.UP)) {
                     this.networkIF = networkIF;
                     break;
                 }
@@ -171,7 +174,7 @@ public class SystemMonitorUI extends JFrame {
     private JLabel createLabel(String text, int fontSize) {
         JLabel label = new JLabel(text);
         label.setFont(new Font("SansSerif", Font.BOLD, fontSize));
-        label.setForeground(Color.GREEN);
+        label.setForeground(Color.YELLOW);
         return label;
     }
 
@@ -198,9 +201,9 @@ public class SystemMonitorUI extends JFrame {
             double cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
             prevTicks = newTicks;
             cpuUsageLabel.setText(String.format("CPU Usage: %.1f%%", cpuLoad));
+            double cpuTemperature = ServiceManager.getCpuTemperature();
+            CpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
 
-            double cpuTemperature = hal.getSensors().getCpuTemperature();
-            System.out.println("CPU Temperature: " + cpuTemperature + "°C");
         }
 
         GlobalMemory memory = hal.getMemory();
@@ -216,7 +219,6 @@ public class SystemMonitorUI extends JFrame {
         if (showSsd && !hal.getDiskStores().isEmpty()) {
             File diskPartition = new File("C:");
             long totalDisk = diskPartition.getTotalSpace();
-
             long usableDisk = diskPartition.getFreeSpace();
             long usedDisk = totalDisk - usableDisk;
             ssdTotalLabel.setText(String.format("SSD Total: %.2f GiB", totalDisk / 1e9));
@@ -228,16 +230,16 @@ public class SystemMonitorUI extends JFrame {
             networkIF.updateAttributes();
             long downloadBytes = networkIF.getBytesRecv();
             long uploadBytes = networkIF.getBytesSent();
-            long downloadSpeed = (downloadBytes - lastDownloadBytes) / 1024; // in KiB/s
-            long uploadSpeed = (uploadBytes - lastUploadBytes) / 1024; // in KiB/s
+            double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024; // in Mbps
+            double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024; // in Mbps
             lastDownloadBytes = downloadBytes;
             lastUploadBytes = uploadBytes;
 
             networkIPLabel.setText(networkIF.getIPv4addr().length > 0 ? "IP: " + networkIF.getIPv4addr()[0] : "IP: --");
-            networkDownloadSpeedLabel.setText(String.format("Download Speed: %d kB/s", downloadSpeed));
-            networkUploadSpeedLabel.setText(String.format("Upload Speed: %d kB/s", uploadSpeed));
+            networkDownloadSpeedLabel.setText(String.format("Download Speed: %.1f Mbps", downloadSpeedMbps));
+            networkUploadSpeedLabel.setText(String.format("Upload Speed: %.1f Mbps", uploadSpeedMbps));
             networkDownloadTotalLabel.setText(String.format("Download Total: %.2f MiB", downloadBytes / 1e6));
-            networkUploadTotalLabel.setText(String.format("Upload Total: %.2f KiB", uploadBytes / 1e3));
+            networkUploadTotalLabel.setText(String.format("Upload Total: %.2f MiB", uploadBytes / 1e6));
         }
         repaint();
     }
@@ -254,6 +256,10 @@ public class SystemMonitorUI extends JFrame {
             JFrame dummyFrame = new JFrame();
             SettingUI settingsUI = new SettingUI(dummyFrame);
             settingsUI.setVisible(true);
+            //Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+             //   ServiceManager.stopService("HardwareMonitorService");
+           // }));
+
 
             if (settingsUI.isSettingsAccepted()) {
                 SystemMonitorUI ui = new SystemMonitorUI(
