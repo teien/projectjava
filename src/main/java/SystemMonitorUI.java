@@ -97,7 +97,7 @@ public class SystemMonitorUI extends JFrame {
         kernelLabel = createLabel("", 14);
         uptimeLabel = createLabel("Uptime: 0h 0m 0s", 14);
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
-        cpuUsageLabel = createLabel("CPU Temperature: 0°C", 14);
+        CpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
 
         ramTotalLabel = createLabel("RAM Total: 0 GiB", 14);
         ramInUseLabel = createLabel("In Use: 0 GiB", 14);
