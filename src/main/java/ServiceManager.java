@@ -10,7 +10,7 @@ import java.io.InputStreamReader;
 
 public class ServiceManager {
     public static double getCpuTemperature() {
-        double cpuTemperature = 0.0;
+        Double cpuTemperature = null;
         if (!isServiceRunning("HardwareMonitorService")) {
             startService("HardwareMonitorService");
             try {
@@ -19,6 +19,9 @@ public class ServiceManager {
                 e.printStackTrace();
             }
         }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            executeCommand("sc stop HardwareMonitorService");
+        }));
 
         JSONArray sensorDataArray = readSensorData("C:\\sensorData.json");
         if (sensorDataArray != null) {

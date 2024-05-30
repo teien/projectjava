@@ -4,6 +4,9 @@ import okhttp3.Response;
 import org.json.JSONObject;
 import org.json.JSONArray;
 
+import java.io.IOException;
+import java.util.concurrent.CompletableFuture;
+
 public class WeatherByIP {
     private static final String IPIFY_API_URL = "https://api.ipify.org?format=text";
     private static final String IPAPI_URL = "http://ip-api.com/json/%s";
@@ -11,104 +14,131 @@ public class WeatherByIP {
     private static final String WEATHER_API_URL = "http://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s&units=metric";
 
     private static final OkHttpClient client = new OkHttpClient();
+    private static LocationInfo cachedLocation = null;
 
-    public static void getWeatherInfo() throws Exception {
-        try {
-            String ip = getPublicIP();
-            LocationInfo locationInfo = getLocationFromIP(ip);
-            String lat = locationInfo.lat();
-            String lon = locationInfo.lon();
-            WeatherInfo weatherInfo = getWeatherDetails(lat, lon);
-            weatherInfo.setCity(locationInfo.city());
-        } catch (Exception e) {
-            throw new Exception("Error while getting weather information: " + e.getMessage(), e);
+    public static CompletableFuture<WeatherInfo> getWeatherInfo() {
+        if (cachedLocation != null) {
+            return getWeatherDetails(cachedLocation.lat(), cachedLocation.lon())
+                    .thenApply(weatherInfo -> {
+                        weatherInfo.setCity(cachedLocation.city());
+                        return weatherInfo;
+                    });
         }
+
+        return getPublicIP()
+                .thenCompose(WeatherByIP::getLocationFromIP)
+                .thenCompose(locationInfo -> {
+                    cachedLocation = locationInfo;
+                    return getWeatherDetails(locationInfo.lat(), locationInfo.lon())
+                            .thenApply(weatherInfo -> {
+                                weatherInfo.setCity(locationInfo.city());
+                                return weatherInfo;
+                            });
+                });
     }
 
-    private static String getPublicIP() throws Exception {
-        Request request = new Request.Builder()
-                .url(IPIFY_API_URL)
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            if (response.body() != null) {
+    private static CompletableFuture<String> getPublicIP() {
+        return CompletableFuture.supplyAsync(() -> {
+             Request request = new Request.Builder()
+                    .url(IPIFY_API_URL)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
                 return response.body().string();
-            } else {
-                throw new Exception("Failed to fetch public IP");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        }
+
+        });
     }
 
-    private static LocationInfo getLocationFromIP(String ip) throws Exception {
-        String url = String.format(IPAPI_URL, ip);
-        Request request = new Request.Builder()
-                .url(url)
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            if (response.body() != null) {
-                String jsonResponse = response.body().string();
-                JSONObject json = new JSONObject(jsonResponse);
-                double lat = json.getDouble("lat");
-                double lon = json.getDouble("lon");
-                String city = json.getString("city");
-                return new LocationInfo(String.valueOf(lat), String.valueOf(lon), city);
-            } else {
-                throw new Exception("Failed to fetch location from IP");
+    private static CompletableFuture<LocationInfo> getLocationFromIP(String ip) {
+        return CompletableFuture.supplyAsync(() -> {
+            try { String url = String.format(IPAPI_URL, ip);
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                if (response.body() != null) {
+                    String jsonResponse = response.body().string();
+                    JSONObject json = new JSONObject(jsonResponse);
+                    double lat = json.getDouble("lat");
+                    double lon = json.getDouble("lon");
+                    String city = json.getString("city");
+                    return new LocationInfo(String.valueOf(lat), String.valueOf(lon), city);
+                } else {
+                    throw new RuntimeException("Failed to fetch location from IP");
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }} catch (Exception e) {
+                System.err.println("Error retrieving location from IP: " + e.getMessage());
+                return new LocationInfo("0", "0", "Unknown");
             }
-        }
+        });
     }
 
-    private static WeatherInfo getWeatherDetails(String lat, String lon) throws Exception {
-        String url = String.format(WEATHER_API_URL, lat, lon, WEATHER_API_KEY);
-        Request request = new Request.Builder()
-                .url(url)
-                .build();
+    private static CompletableFuture<WeatherInfo> getWeatherDetails(String lat, String lon) {
+        return CompletableFuture.supplyAsync(() -> {
 
-        try (Response response = client.newCall(request).execute()) {
-            if (response.body() != null) {
-                String jsonResponse = response.body().string();
-                JSONObject json = new JSONObject(jsonResponse);
+                String url = String.format(WEATHER_API_URL, lat, lon, WEATHER_API_KEY);
 
-                JSONArray weatherArray = json.getJSONArray("weather");
-                JSONObject weather = weatherArray.getJSONObject(0);
-                String iconCode = weather.getString("icon");
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                if (response.body() != null) {
+                    String jsonResponse = response.body().string();
+                    JSONObject json = new JSONObject(jsonResponse);
 
-                double temp = json.getJSONObject("main").getDouble("temp");
+                    if (!json.has("weather")) {
+                        throw new RuntimeException("Weather information not found in response");
+                    }
 
-                return new WeatherInfo(iconCode, temp);
-            } else {
-                throw new Exception("Failed to fetch weather details");
+                    JSONArray weatherArray = json.getJSONArray("weather");
+                    JSONObject weather = weatherArray.getJSONObject(0);
+                    String iconCode = weather.getString("icon");
+
+                    double temp = json.getJSONObject("main").getDouble("temp");
+                    System.out.println("Weather: " + iconCode + ", Temp: " + temp);
+                    return new WeatherInfo(iconCode, temp);
+                } else {
+                    throw new RuntimeException("Failed to fetch weather details");
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        }
+        });
     }
+
 
     public static class WeatherInfo {
-        private static String iconCode;
-        private static double temperature;
-        private static String city;
+        private final String iconCode;
+        private final double temperature;
+        private String city;
 
         public WeatherInfo(String iconCode, double temperature) {
-            WeatherInfo.iconCode = iconCode;
-            WeatherInfo.temperature = temperature;
+            this.iconCode = iconCode;
+            this.temperature = temperature;
         }
 
-        public static String getIconCode() {
+        public String getIconCode() {
             return iconCode;
         }
 
-        public static double getTemperature() {
+        public double getTemperature() {
             return temperature;
         }
 
-        public static String getCity() {
+        public String getCity() {
             return city;
         }
 
         public void setCity(String city) {
-            WeatherInfo.city = city;
+            this.city = city;
         }
     }
-    public record LocationInfo(String lat, String lon, String city) {
+
+    public static record LocationInfo(String lat, String lon, String city) {
     }
 }

@@ -1,14 +1,15 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
-
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
@@ -50,6 +51,11 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showSsd;
     private final boolean showNetwork;
 
+    private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService checkUpdateWeather = Executors.newSingleThreadScheduledExecutor();
+
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork) {
         this.showCpu = showCpu;
         this.showRam = showRam;
@@ -65,13 +71,18 @@ public class SystemMonitorUI extends JFrame {
         int x = (dim.width - w);
         int y = 0;
         this.setLocation(x, y);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            systemInfoExecutor.shutdown();
+            weatherUpdateExecutor.shutdown();
+        }));
     }
 
     private void initializeUI() {
         setTitle("System Monitor");
         setSize(250, 500);
         setUndecorated(true);
-        setAlwaysOnTop(true);
+        setAlwaysOnTop(false);
         setFocusableWindowState(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
@@ -85,6 +96,15 @@ public class SystemMonitorUI extends JFrame {
         timeLabel = createLabel("HH:mm", 36);
         dateLabel = createLabel("EEE, dd MMM yyyy", 18);
         weatherLabel = createLabel("Weather: --", 14);
+        BufferedImage blankImage = new BufferedImage(50, 50, BufferedImage.TYPE_INT_ARGB);
+
+        Graphics2D g2d = blankImage.createGraphics();
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
+        g2d.fillRect(0, 0, 50, 50);
+        g2d.dispose();
+        ImageIcon transparentIcon = new ImageIcon(blankImage);
+        weatherLabel.setIcon(transparentIcon);
+
         kernelLabel = createLabel("", 14);
         uptimeLabel = createLabel("Uptime: 0h 0m 0s", 14);
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
@@ -154,32 +174,30 @@ public class SystemMonitorUI extends JFrame {
     }
 
     private void startUpdateTimer() {
-        Timer timer = new Timer(true);
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                SwingUtilities.invokeLater(() -> {
-                    try {
-                        updateSystemInfo();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            }
-        }, 0, 1000);
-        Timer weatherUpdateTimer = new Timer(true);
-        weatherUpdateTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                SwingUtilities.invokeLater(() -> {
-                    try {
-                        updateWeatherInfo();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-            }
-        }, 0, 600000);
+        // Update weather if first time can not be done because of network issues
+        if (networkIPLabel.getText().equals("IP: --")) {
+            checkUpdateNet.scheduleAtFixedRate(() -> {
+                SwingUtilities.invokeLater(this::initializeSystemInfo);
+                if (!networkIPLabel.getText().equals("IP: --")) {
+                    checkUpdateNet.shutdown();
+                }
+            }, 20, 10, TimeUnit.SECONDS);
+        }
+
+        // Cập nhật thông tin thời tiết lần đầu nếu không có thông tin thời tiết
+        if (weatherLabel.getText().equals("Weather: --")) {
+            checkUpdateWeather.scheduleAtFixedRate(() -> {
+                SwingUtilities.invokeLater(this::updateWeatherInfo) ;
+                if (!weatherLabel.getText().equals("Weather: --")) {
+                    checkUpdateWeather.shutdown();
+                }
+            }, 20, 10, TimeUnit.SECONDS);
+        }
+        weatherUpdateExecutor.scheduleAtFixedRate(this::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
+        systemInfoExecutor.scheduleAtFixedRate(() -> {
+            SwingUtilities.invokeLater(this::updateSystemInfo );
+        }, 0, 1, TimeUnit.SECONDS);
+
     }
 
     private JLabel createLabel(String text, int fontSize) {
@@ -195,74 +213,92 @@ public class SystemMonitorUI extends JFrame {
         return separator;
     }
 
-    private void updateSystemInfo() throws Exception {
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-        SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy");
-        Date now = new Date();
-        timeLabel.setText(timeFormat.format(now));
-        dateLabel.setText(dateFormat.format(now));
+    private void updateSystemInfo() {
+        try {
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy");
+            Date now = new Date();
+            timeLabel.setText(timeFormat.format(now));
+            dateLabel.setText(dateFormat.format(now));
 
-        String computerName = System.getenv("COMPUTERNAME");
-        String osName = System.getProperty("os.name").toLowerCase();
-        kernelLabel.setText("Computer: " + computerName + " (" + osName + ")");
-        uptimeLabel.setText("Uptime: " + formatUptime(os.getSystemUptime()));
-        if (showCpu) {
-            long[] newTicks = processor.getSystemCpuLoadTicks();
-            double cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
-            prevTicks = newTicks;
-            cpuUsageLabel.setText(String.format("CPU Usage: %.1f%%", cpuLoad));
-            double cpuTemperature = ServiceManager.getCpuTemperature();
-            cpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
+            String computerName = System.getenv("COMPUTERNAME");
+            String osName = System.getProperty("os.name").toLowerCase();
+            kernelLabel.setText("Computer: " + computerName + " (" + osName + ")");
+            uptimeLabel.setText("Uptime: " + formatUptime(os.getSystemUptime()));
+            if (showCpu) {
+                long[] newTicks = processor.getSystemCpuLoadTicks();
+                double cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
+                prevTicks = newTicks;
+                cpuUsageLabel.setText(String.format("CPU Usage: %.1f%%", cpuLoad));
+                Double cpuTemperature = ServiceManager.getCpuTemperature();
+                cpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
+            }
+
+            GlobalMemory memory = hal.getMemory();
+            if (showRam) {
+                long totalMemory = memory.getTotal();
+                long availableMemory = memory.getAvailable();
+                long usedMemory = totalMemory - availableMemory;
+                ramTotalLabel.setText(String.format("RAM Total: %.2f GiB", totalMemory / 1e9));
+                ramInUseLabel.setText(String.format("In Use: %.2f GiB", usedMemory / 1e9));
+                ramFreeLabel.setText(String.format("Free: %.2f GiB", availableMemory / 1e9));
+            }
+
+            if (showSsd && !hal.getDiskStores().isEmpty()) {
+                File diskPartition = new File("C:");
+                long totalDisk = diskPartition.getTotalSpace();
+                long usableDisk = diskPartition.getFreeSpace();
+                long usedDisk = totalDisk - usableDisk;
+                ssdTotalLabel.setText(String.format("SSD Total: %.2f GiB", totalDisk / 1e9));
+                ssdFreeLabel.setText(String.format("Free: %.2f GiB", usableDisk / 1e9));
+                ssdUsedLabel.setText(String.format("Used: %.2f GiB", usedDisk / 1e9));
+            }
+
+            if (showNetwork && networkIF != null) {
+                networkIF.updateAttributes();
+                long downloadBytes = networkIF.getBytesRecv();
+                long uploadBytes = networkIF.getBytesSent();
+                double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024;
+                double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024;
+                lastDownloadBytes = downloadBytes;
+                lastUploadBytes = uploadBytes;
+
+                networkIPLabel.setText(networkIF.getIPv4addr().length > 0 ? "IP: " + networkIF.getIPv4addr()[0] : "IP: --");
+                networkDownloadSpeedLabel.setText(String.format("Download Speed: %.1f Mbps", downloadSpeedMbps));
+                networkUploadSpeedLabel.setText(String.format("Upload Speed: %.1f Mbps", uploadSpeedMbps));
+                networkDownloadTotalLabel.setText(String.format("Download Total: %.2f MiB", downloadBytes / 1e6));
+                networkUploadTotalLabel.setText(String.format("Upload Total: %.2f MiB", uploadBytes / 1e6));
+            }
+            repaint();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        GlobalMemory memory = hal.getMemory();
-        if (showRam) {
-            long totalMemory = memory.getTotal();
-            long availableMemory = memory.getAvailable();
-            long usedMemory = totalMemory - availableMemory;
-            ramTotalLabel.setText(String.format("RAM Total: %.2f GiB", totalMemory / 1e9));
-            ramInUseLabel.setText(String.format("In Use: %.2f GiB", usedMemory / 1e9));
-            ramFreeLabel.setText(String.format("Free: %.2f GiB", availableMemory / 1e9));
-        }
-
-        if (showSsd && !hal.getDiskStores().isEmpty()) {
-            File diskPartition = new File("C:");
-            long totalDisk = diskPartition.getTotalSpace();
-            long usableDisk = diskPartition.getFreeSpace();
-            long usedDisk = totalDisk - usableDisk;
-            ssdTotalLabel.setText(String.format("SSD Total: %.2f GiB", totalDisk / 1e9));
-            ssdFreeLabel.setText(String.format("Free: %.2f GiB", usableDisk / 1e9));
-            ssdUsedLabel.setText(String.format("Used: %.2f GiB", usedDisk / 1e9));
-        }
-
-        if (showNetwork && networkIF != null) {
-            networkIF.updateAttributes();
-            long downloadBytes = networkIF.getBytesRecv();
-            long uploadBytes = networkIF.getBytesSent();
-            double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024;
-            double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024;
-            lastDownloadBytes = downloadBytes;
-            lastUploadBytes = uploadBytes;
-
-            networkIPLabel.setText(networkIF.getIPv4addr().length > 0 ? "IP: " + networkIF.getIPv4addr()[0] : "IP: --");
-            networkDownloadSpeedLabel.setText(String.format("Download Speed: %.1f Mbps", downloadSpeedMbps));
-            networkUploadSpeedLabel.setText(String.format("Upload Speed: %.1f Mbps", uploadSpeedMbps));
-            networkDownloadTotalLabel.setText(String.format("Download Total: %.2f MiB", downloadBytes / 1e6));
-            networkUploadTotalLabel.setText(String.format("Upload Total: %.2f MiB", uploadBytes / 1e6));
-        }
-        repaint();
     }
 
     private void updateWeatherInfo() {
-        try {
-            WeatherByIP.getWeatherInfo();
-            String weatherIcon = WeatherByIP.WeatherInfo.getIconCode();
-            ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
-            weatherLabel.setIcon(icon);
-            weatherLabel.setText("   "+ WeatherByIP.WeatherInfo.getTemperature() + "°C" +"    " + WeatherByIP.WeatherInfo.getCity() );
-        } catch (Exception e) {
-            weatherLabel.setText("Weather: --");
-        }
+        WeatherByIP.getWeatherInfo().thenAccept(weatherInfo -> {
+            try {
+                String weatherIcon = weatherInfo.getIconCode();
+                ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
+
+                SwingUtilities.invokeLater(() -> {
+                    weatherLabel.setIcon(icon);
+                    weatherLabel.setText("   " + weatherInfo.getTemperature() + "°C" + "    " + weatherInfo.getCity());
+                    System.out.println("Weather updated");
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    weatherLabel.setText("Weather: --");
+                });
+            }
+        }).exceptionally(ex -> {
+            SwingUtilities.invokeLater(() -> {
+                weatherLabel.setText("Weather: --");
+            });
+            ex.printStackTrace();
+            return null;
+        });
+
     }
 
     private String formatUptime(long seconds) {
