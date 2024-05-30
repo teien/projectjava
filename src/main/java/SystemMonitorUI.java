@@ -24,7 +24,6 @@ public class SystemMonitorUI extends JFrame {
     private JLabel kernelLabel;
     private JLabel uptimeLabel;
     private JLabel cpuUsageLabel;
-
     private JLabel ramTotalLabel;
     private JLabel ramInUseLabel;
     private JLabel ramFreeLabel;
@@ -36,8 +35,7 @@ public class SystemMonitorUI extends JFrame {
     private JLabel networkUploadSpeedLabel;
     private JLabel networkDownloadTotalLabel;
     private JLabel networkUploadTotalLabel;
-    private JLabel CpuTemperatureLabel;
-
+    private JLabel cpuTemperatureLabel;
 
     private HardwareAbstractionLayer hal;
     private OperatingSystem os;
@@ -46,7 +44,6 @@ public class SystemMonitorUI extends JFrame {
     private NetworkIF networkIF;
     private long lastDownloadBytes;
     private long lastUploadBytes;
-
 
     private final boolean showCpu;
     private final boolean showRam;
@@ -63,16 +60,10 @@ public class SystemMonitorUI extends JFrame {
         initializeSystemInfo();
         startUpdateTimer();
 
-        // Get the size of the screen
         Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-
-        // Determine the new location of the window
         int w = this.getSize().width;
-        //int h = this.getSize().height;
         int x = (dim.width - w);
         int y = 0;
-
-        // Move the window
         this.setLocation(x, y);
     }
 
@@ -97,8 +88,7 @@ public class SystemMonitorUI extends JFrame {
         kernelLabel = createLabel("", 14);
         uptimeLabel = createLabel("Uptime: 0h 0m 0s", 14);
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
-        CpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
-
+        cpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
         ramTotalLabel = createLabel("RAM Total: 0 GiB", 14);
         ramInUseLabel = createLabel("In Use: 0 GiB", 14);
         ramFreeLabel = createLabel("Free: 0 GiB", 14);
@@ -120,8 +110,7 @@ public class SystemMonitorUI extends JFrame {
         panel.add(createSeparator());
         if (showCpu) {
             panel.add(cpuUsageLabel);
-            panel.add(CpuTemperatureLabel);
-
+            panel.add(cpuTemperatureLabel);
         }
         panel.add(createSeparator());
         if (showRam) {
@@ -153,8 +142,7 @@ public class SystemMonitorUI extends JFrame {
         os = systemInfo.getOperatingSystem();
         processor = hal.getProcessor();
         prevTicks = processor.getSystemCpuLoadTicks();
-        //Net
-        List<NetworkIF> networkIFs = systemInfo.getHardware().getNetworkIFs();
+        List<NetworkIF> networkIFs = hal.getNetworkIFs();
         if (!networkIFs.isEmpty()) {
             for (NetworkIF networkIF : networkIFs) {
                 if (networkIF.isConnectorPresent() && networkIF.getIPv4addr().length > 0 && networkIF.getSpeed() > 0 && networkIF.getIfOperStatus().equals(NetworkIF.IfOperStatus.UP)) {
@@ -179,6 +167,19 @@ public class SystemMonitorUI extends JFrame {
                 });
             }
         }, 0, 1000);
+        Timer weatherUpdateTimer = new Timer(true);
+        weatherUpdateTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                SwingUtilities.invokeLater(() -> {
+                    try {
+                        updateWeatherInfo();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
+        }, 0, 600000);
     }
 
     private JLabel createLabel(String text, int fontSize) {
@@ -205,23 +206,13 @@ public class SystemMonitorUI extends JFrame {
         String osName = System.getProperty("os.name").toLowerCase();
         kernelLabel.setText("Computer: " + computerName + " (" + osName + ")");
         uptimeLabel.setText("Uptime: " + formatUptime(os.getSystemUptime()));
-        WeatherByIP.getWeatherInfo();
-        String weatherIcon = WeatherByIP.WeatherInfo.getIconCode();
-        ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
-        weatherLabel.setIcon(icon);
-        weatherLabel.setText("   "+ WeatherByIP.WeatherInfo.getTemperature() + "°C" +"    " + WeatherByIP.WeatherInfo.getCity() );
-
-
         if (showCpu) {
             long[] newTicks = processor.getSystemCpuLoadTicks();
             double cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
             prevTicks = newTicks;
             cpuUsageLabel.setText(String.format("CPU Usage: %.1f%%", cpuLoad));
             double cpuTemperature = ServiceManager.getCpuTemperature();
-            CpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
-
-
-
+            cpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
         }
 
         GlobalMemory memory = hal.getMemory();
@@ -248,8 +239,8 @@ public class SystemMonitorUI extends JFrame {
             networkIF.updateAttributes();
             long downloadBytes = networkIF.getBytesRecv();
             long uploadBytes = networkIF.getBytesSent();
-            double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024; // in Mbps
-            double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024; // in Mbps
+            double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024;
+            double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024;
             lastDownloadBytes = downloadBytes;
             lastUploadBytes = uploadBytes;
 
@@ -260,6 +251,18 @@ public class SystemMonitorUI extends JFrame {
             networkUploadTotalLabel.setText(String.format("Upload Total: %.2f MiB", uploadBytes / 1e6));
         }
         repaint();
+    }
+
+    private void updateWeatherInfo() {
+        try {
+            WeatherByIP.getWeatherInfo();
+            String weatherIcon = WeatherByIP.WeatherInfo.getIconCode();
+            ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
+            weatherLabel.setIcon(icon);
+            weatherLabel.setText("   "+ WeatherByIP.WeatherInfo.getTemperature() + "°C" +"    " + WeatherByIP.WeatherInfo.getCity() );
+        } catch (Exception e) {
+            weatherLabel.setText("Weather: --");
+        }
     }
 
     private String formatUptime(long seconds) {
