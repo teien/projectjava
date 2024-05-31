@@ -37,6 +37,8 @@ public class SystemMonitorUI extends JFrame {
     private JLabel networkDownloadTotalLabel;
     private JLabel networkUploadTotalLabel;
     private JLabel cpuTemperatureLabel;
+    private JLabel gpuTemperatureLabel;
+    private JLabel gpuUsageLabel;
 
     private HardwareAbstractionLayer hal;
     private OperatingSystem os;
@@ -50,17 +52,21 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showRam;
     private final boolean showSsd;
     private final boolean showNetwork;
+    private final boolean showWeather;
+    private  boolean showGpu;
 
     private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateWeather = Executors.newSingleThreadScheduledExecutor();
 
-    public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork) {
+    public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu) {
         this.showCpu = showCpu;
         this.showRam = showRam;
         this.showSsd = showSsd;
         this.showNetwork = showNetwork;
+        this.showWeather = showWeather;
+        this.showGpu = showGpu;
 
         initializeUI();
         initializeSystemInfo();
@@ -80,7 +86,7 @@ public class SystemMonitorUI extends JFrame {
 
     private void initializeUI() {
         setTitle("System Monitor");
-        setSize(250, 500);
+        setSize(250, 600);
         setUndecorated(true);
         setAlwaysOnTop(false);
         setFocusableWindowState(false);
@@ -97,7 +103,6 @@ public class SystemMonitorUI extends JFrame {
         dateLabel = createLabel("EEE, dd MMM yyyy", 18);
         weatherLabel = createLabel("Weather: --", 14);
         BufferedImage blankImage = new BufferedImage(50, 50, BufferedImage.TYPE_INT_ARGB);
-
         Graphics2D g2d = blankImage.createGraphics();
         g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
         g2d.fillRect(0, 0, 50, 50);
@@ -109,12 +114,18 @@ public class SystemMonitorUI extends JFrame {
         uptimeLabel = createLabel("Uptime: 0h 0m 0s", 14);
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
         cpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
+
+        gpuTemperatureLabel = createLabel("GPU Temperature: 0°C", 14);
+        gpuUsageLabel = createLabel("GPU Usage: 0%", 14);
+
         ramTotalLabel = createLabel("RAM Total: 0 GiB", 14);
         ramInUseLabel = createLabel("In Use: 0 GiB", 14);
         ramFreeLabel = createLabel("Free: 0 GiB", 14);
+
         ssdTotalLabel = createLabel("SSD Total: 0 GiB", 14);
         ssdFreeLabel = createLabel("Free: 0 GiB", 14);
         ssdUsedLabel = createLabel("Used: 0 GiB", 14);
+
         networkIPLabel = createLabel("IP: --", 14);
         networkDownloadSpeedLabel = createLabel("Download Speed: 0 kB/s", 14);
         networkUploadSpeedLabel = createLabel("Upload Speed: 0 kB/s", 14);
@@ -123,7 +134,9 @@ public class SystemMonitorUI extends JFrame {
 
         panel.add(timeLabel);
         panel.add(dateLabel);
-        panel.add(weatherLabel);
+        if (showWeather) {
+            panel.add(weatherLabel);
+        }
         panel.add(createSeparator());
         panel.add(kernelLabel);
         panel.add(uptimeLabel);
@@ -131,6 +144,11 @@ public class SystemMonitorUI extends JFrame {
         if (showCpu) {
             panel.add(cpuUsageLabel);
             panel.add(cpuTemperatureLabel);
+        }
+        panel.add(createSeparator());
+        if (showGpu) {
+            panel.add(gpuTemperatureLabel);
+            panel.add(gpuUsageLabel);
         }
         panel.add(createSeparator());
         if (showRam) {
@@ -175,25 +193,26 @@ public class SystemMonitorUI extends JFrame {
 
     private void startUpdateTimer() {
         // Update weather if first time can not be done because of network issues
-        if (networkIPLabel.getText().equals("IP: --")) {
+        if ((showNetwork) && (networkIPLabel.getText().equals("IP: --"))) {
             checkUpdateNet.scheduleAtFixedRate(() -> {
                 SwingUtilities.invokeLater(this::initializeSystemInfo);
                 if (!networkIPLabel.getText().equals("IP: --")) {
                     checkUpdateNet.shutdown();
                 }
-            }, 20, 10, TimeUnit.SECONDS);
+            }, 20, 20, TimeUnit.SECONDS);
         }
-
-        // Cập nhật thông tin thời tiết lần đầu nếu không có thông tin thời tiết
-        if (weatherLabel.getText().equals("Weather: --")) {
+       // Update weather if first time can not be done because of network issues
+        if ((showWeather) && (!updateWeatherInfo())) {
             checkUpdateWeather.scheduleAtFixedRate(() -> {
                 SwingUtilities.invokeLater(this::updateWeatherInfo) ;
-                if (!weatherLabel.getText().equals("Weather: --")) {
+                if(updateWeatherInfo()) {
                     checkUpdateWeather.shutdown();
                 }
             }, 20, 10, TimeUnit.SECONDS);
         }
-        weatherUpdateExecutor.scheduleAtFixedRate(this::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
+        if (showWeather) {
+            weatherUpdateExecutor.scheduleAtFixedRate(this::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
+        }
         systemInfoExecutor.scheduleAtFixedRate(() -> {
             SwingUtilities.invokeLater(this::updateSystemInfo );
         }, 0, 1, TimeUnit.SECONDS);
@@ -225,6 +244,7 @@ public class SystemMonitorUI extends JFrame {
             String osName = System.getProperty("os.name").toLowerCase();
             kernelLabel.setText("Computer: " + computerName + " (" + osName + ")");
             uptimeLabel.setText("Uptime: " + formatUptime(os.getSystemUptime()));
+
             if (showCpu) {
                 long[] newTicks = processor.getSystemCpuLoadTicks();
                 double cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
@@ -232,6 +252,12 @@ public class SystemMonitorUI extends JFrame {
                 cpuUsageLabel.setText(String.format("CPU Usage: %.1f%%", cpuLoad));
                 Double cpuTemperature = ServiceManager.getCpuTemperature();
                 cpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
+            }
+            if (showGpu) {
+                Double gpuTemperature = ServiceManager.getGpuTemperature();
+                Double gpuUsage = ServiceManager.getGpuUsage();
+                gpuTemperatureLabel.setText(String.format("GPU Temperature: %.1f°C", gpuTemperature));
+                gpuUsageLabel.setText(String.format("GPU Usage: %.1f%%", gpuUsage));
             }
 
             GlobalMemory memory = hal.getMemory();
@@ -275,30 +301,36 @@ public class SystemMonitorUI extends JFrame {
         }
     }
 
-    private void updateWeatherInfo() {
-        WeatherByIP.getWeatherInfo().thenAccept(weatherInfo -> {
-            try {
-                String weatherIcon = weatherInfo.getIconCode();
-                ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
+    private boolean updateWeatherInfo() {
+        try {
+            WeatherByIP.getWeatherInfo().thenAccept(weatherInfo -> {
+                try {
+                    String weatherIcon = weatherInfo.getIconCode();
+                    ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
 
-                SwingUtilities.invokeLater(() -> {
-                    weatherLabel.setIcon(icon);
-                    weatherLabel.setText("   " + weatherInfo.getTemperature() + "°C" + "    " + weatherInfo.getCity());
-                    System.out.println("Weather updated");
-                });
-            } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        weatherLabel.setIcon(icon);
+                        weatherLabel.setText("   " + weatherInfo.getTemperature() + "°C" + "    " + weatherInfo.getCity());
+                        System.out.println("Weather updated");
+                    });
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        weatherLabel.setText("Weather: --");
+                    });
+                }
+            }).exceptionally(ex -> {
                 SwingUtilities.invokeLater(() -> {
                     weatherLabel.setText("Weather: --");
                 });
-            }
-        }).exceptionally(ex -> {
-            SwingUtilities.invokeLater(() -> {
-                weatherLabel.setText("Weather: --");
+                ex.printStackTrace();
+                return null;
             });
-            ex.printStackTrace();
-            return null;
-        });
 
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     private String formatUptime(long seconds) {
@@ -318,7 +350,10 @@ public class SystemMonitorUI extends JFrame {
                         settingsUI.isCpuSelected(),
                         settingsUI.isRamSelected(),
                         settingsUI.isSsdSelected(),
-                        settingsUI.isNetworkSelected()
+                        settingsUI.isNetworkSelected(),
+                        settingsUI.isWeatherSelected(),
+                        settingsUI.isGpuSelected()
+
                 );
                 ui.setVisible(true);
             }

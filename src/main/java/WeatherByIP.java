@@ -3,7 +3,6 @@ import okhttp3.Request;
 import okhttp3.Response;
 import org.json.JSONObject;
 import org.json.JSONArray;
-
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
@@ -28,61 +27,78 @@ public class WeatherByIP {
         return getPublicIP()
                 .thenCompose(WeatherByIP::getLocationFromIP)
                 .thenCompose(locationInfo -> {
-                    cachedLocation = locationInfo;
+                    if (!"0".equals(locationInfo.lat()) && !"0".equals(locationInfo.lon())) {
+                        cachedLocation = locationInfo;
+                    }
                     return getWeatherDetails(locationInfo.lat(), locationInfo.lon())
                             .thenApply(weatherInfo -> {
                                 weatherInfo.setCity(locationInfo.city());
                                 return weatherInfo;
                             });
+                })
+                .exceptionally(e -> {
+                    System.err.println("Error occurred during fetching weather info: " + e.getMessage());
+                    return new WeatherInfo("unknown", 0.0);
                 });
     }
 
     private static CompletableFuture<String> getPublicIP() {
         return CompletableFuture.supplyAsync(() -> {
-             Request request = new Request.Builder()
+            Request request = new Request.Builder()
                     .url(IPIFY_API_URL)
                     .build();
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
                 return response.body().string();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Failed to get public IP", e);
             }
-
+        }).exceptionally(e -> {
+            System.err.println("Error occurred during fetching public IP: " + e.getMessage());
+            return "unknown";
         });
     }
 
     private static CompletableFuture<LocationInfo> getLocationFromIP(String ip) {
         return CompletableFuture.supplyAsync(() -> {
-            try { String url = String.format(IPAPI_URL, ip);
-            Request request = new Request.Builder()
-                    .url(url)
-                    .build();
-            try (Response response = client.newCall(request).execute()) {
-                if (response.body() != null) {
-                    String jsonResponse = response.body().string();
-                    JSONObject json = new JSONObject(jsonResponse);
-                    double lat = json.getDouble("lat");
-                    double lon = json.getDouble("lon");
-                    String city = json.getString("city");
-                    return new LocationInfo(String.valueOf(lat), String.valueOf(lon), city);
-                } else {
-                    throw new RuntimeException("Failed to fetch location from IP");
+            if ("unknown".equals(ip)) {
+                return new LocationInfo("0", "0", "Unknown");
+            }
+            try {
+                String url = String.format(IPAPI_URL, ip);
+                Request request = new Request.Builder()
+                        .url(url)
+                        .build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.body() != null) {
+                        String jsonResponse = response.body().string();
+                        JSONObject json = new JSONObject(jsonResponse);
+                        double lat = json.getDouble("lat");
+                        double lon = json.getDouble("lon");
+                        String city = json.getString("city");
+                        return new LocationInfo(String.valueOf(lat), String.valueOf(lon), city);
+                    } else {
+                        throw new RuntimeException("Failed to fetch location from IP");
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
             } catch (Exception e) {
-                throw new RuntimeException(e);
-            }} catch (Exception e) {
                 System.err.println("Error retrieving location from IP: " + e.getMessage());
                 return new LocationInfo("0", "0", "Unknown");
             }
+        }).exceptionally(e -> {
+            System.err.println("Error occurred during fetching location from IP: " + e.getMessage());
+            return new LocationInfo("0", "0", "Unknown");
         });
     }
 
     private static CompletableFuture<WeatherInfo> getWeatherDetails(String lat, String lon) {
         return CompletableFuture.supplyAsync(() -> {
-
-                String url = String.format(WEATHER_API_URL, lat, lon, WEATHER_API_KEY);
-
+            if ("0".equals(lat) && "0".equals(lon)) {
+                return new WeatherInfo("unknown", 0.0);
+            }
+            String url = String.format(WEATHER_API_URL, lat, lon, WEATHER_API_KEY);
             Request request = new Request.Builder()
                     .url(url)
                     .build();
@@ -108,9 +124,11 @@ public class WeatherByIP {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }).exceptionally(e -> {
+            System.err.println("Error occurred during fetching weather details: " + e.getMessage());
+            return new WeatherInfo("unknown", 0.0);
         });
     }
-
 
     public static class WeatherInfo {
         private final String iconCode;

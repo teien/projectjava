@@ -4,26 +4,33 @@ import java.awt.event.ActionListener;
 
 public class SettingUI extends JDialog {
 
-    private JCheckBox cpuCheckBox;
-    private JCheckBox ramCheckBox;
-    private JCheckBox ssdCheckBox;
-    private JCheckBox networkCheckBox;
+    private final JCheckBox cpuCheckBox;
+    private final JCheckBox ramCheckBox;
+    private final JCheckBox ssdCheckBox;
+    private final JCheckBox networkCheckBox;
+    private final JCheckBox gpuCheckBox;
+    private final JCheckBox weatherCheckBox;
+
     private boolean settingsAccepted;
 
     public SettingUI(JFrame parent) {
         super(parent, "Settings", true);
-        setSize(300, 200);
+        setSize(320, 250);
         setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 
         cpuCheckBox = new JCheckBox("Show CPU Info", true);
         ramCheckBox = new JCheckBox("Show RAM Info", true);
         ssdCheckBox = new JCheckBox("Show SSD Info", true);
         networkCheckBox = new JCheckBox("Show Network Info", true);
+        gpuCheckBox = new JCheckBox("Show GPU Info", true);
+        weatherCheckBox = new JCheckBox("Show Weather Info", true);
 
         add(cpuCheckBox);
         add(ramCheckBox);
         add(ssdCheckBox);
         add(networkCheckBox);
+        add(gpuCheckBox);
+        add(weatherCheckBox);
 
         JButton okButton = new JButton("OK");
         okButton.addActionListener(new ActionListener() {
@@ -55,5 +62,11 @@ public class SettingUI extends JDialog {
 
     public boolean isNetworkSelected() {
         return networkCheckBox.isSelected();
+    }
+    public boolean isGpuSelected() {
+        return gpuCheckBox.isSelected();
+    }
+    public boolean isWeatherSelected() {
+        return weatherCheckBox.isSelected();
     }
 }
