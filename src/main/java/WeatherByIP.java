@@ -49,6 +49,7 @@ public class WeatherByIP {
                     .build();
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+                assert response.body() != null;
                 return response.body().string();
             } catch (IOException e) {
                 throw new RuntimeException("Failed to get public IP", e);
@@ -157,6 +158,6 @@ public class WeatherByIP {
         }
     }
 
-    public static record LocationInfo(String lat, String lon, String city) {
+    public record LocationInfo(String lat, String lon, String city) {
     }
 }

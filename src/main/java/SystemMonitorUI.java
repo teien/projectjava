@@ -56,12 +56,14 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showSsd;
     private final boolean showNetwork;
     private final boolean showWeather;
-    private  boolean showGpu;
+    private final boolean showGpu;
 
     private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateWeather = Executors.newSingleThreadScheduledExecutor();
+
+
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu) {
         this.showCpu = showCpu;
@@ -252,21 +254,22 @@ public class SystemMonitorUI extends JFrame {
             kernelLabel.setText("Computer: " + computerName + " (" + osName + ")");
             uptimeLabel.setText("Uptime: " + formatUptime(os.getSystemUptime()));
 
+            ServiceManager.HwInfo hwInfo = ServiceManager.HwInfo.getHwInfo();
             if (showCpu) {
                 long[] newTicks = processor.getSystemCpuLoadTicks();
                 double cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks) * 100;
                 prevTicks = newTicks;
                 cpuUsageLabel.setText(String.format("CPU Usage: %.1f%%", cpuLoad));
-                Double cpuTemperature = ServiceManager.getCpuTemperature();
+                Double cpuTemperature = hwInfo.cpuTemperature();
                 cpuTemperatureLabel.setText(String.format("CPU Temperature: %.1f°C", cpuTemperature));
-                cpuNameLabel.setText(ServiceManager.getCpuName());
+                cpuNameLabel.setText(hwInfo.cpuName()) ;
             }
             if (showGpu) {
-                Double gpuTemperature = ServiceManager.getGpuTemperature();
-                Double gpuUsage = ServiceManager.getGpuUsage();
+                Double gpuTemperature = hwInfo.gpuTemperature();
+                Double gpuUsage = hwInfo.gpuUsage();
                 gpuTemperatureLabel.setText(String.format("GPU Temperature: %.1f°C", gpuTemperature));
                 gpuUsageLabel.setText(String.format("GPU Usage: %.1f%%", gpuUsage));
-                gpuNameLabel.setText( ServiceManager.getGpuName());
+                gpuNameLabel.setText(hwInfo.gpuName());
             }
 
             GlobalMemory memory = hal.getMemory();
