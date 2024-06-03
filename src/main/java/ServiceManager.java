@@ -15,7 +15,6 @@ public class ServiceManager {
     private static final String GPU_CORE = "GPU Core";
     private static final String TEMPERATURE = "Temperature";
     private static final String USAGE = "Usage";
-    private static JSONArray sensorDataArray;
 
 
     public record HwInfo(Double cpuTemperature, Double gpuTemperature, Double gpuUsage, Double cpuUsage, String cpuName,
@@ -29,6 +28,7 @@ public class ServiceManager {
             String cpuName = "";
             String gpuName = "";
             startAndEnsureServiceRunning();
+            JSONArray sensorDataArray = readSensorData();
             if (sensorDataArray != null) {
                 for (Object sensorDataObj : sensorDataArray) {
                     JSONObject sensorData = (JSONObject) sensorDataObj;
@@ -80,7 +80,6 @@ public class ServiceManager {
 
 
     private static void startAndEnsureServiceRunning() {
-        sensorDataArray = readSensorData();
         if (!isServiceRunning()) {
             startService();
             try {
