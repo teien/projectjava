@@ -1,1 +1,8 @@
-sc create HardwareMonitorService binPath= "C:\Users\Master\source\repos\ConsoleApp2\ConsoleApp2\bin\Debug\ConsoleApp2.exe"
+@echo off
+setlocal
+set current_dir=%~dp0
+set binPath=%current_dir%ConsoleApp2.exe
+sc create HardwareMonitorService binPath= "%binPath%" start= auto
+echo Service HardwareMonitorService đã được tạo với binPath=%binPath%
+pause
+
