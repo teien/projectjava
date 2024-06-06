@@ -1,6 +1,7 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
@@ -10,6 +11,14 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import javax.swing.KeyStroke;
+
+import com.google.gson.JsonObject;
+import com.sun.jna.Native;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef;
+import com.sun.jna.platform.win32.WinUser;
+import org.json.JSONObject;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
@@ -19,29 +28,31 @@ import oshi.software.os.OperatingSystem;
 
 public class SystemMonitorUI extends JFrame {
 
-    private JLabel timeLabel;
-    private JLabel dateLabel;
-    private JLabel weatherLabel;
-    private JLabel kernelLabel;
-    private JLabel uptimeLabel;
-    private JLabel cpuUsageLabel;
-    private JLabel cpuTemperatureLabel;
-    private JLabel cpuNameLabel;
-    private JLabel ramTotalLabel;
-    private JLabel ramInUseLabel;
-    private JLabel ramFreeLabel;
-    private JLabel ssdTotalLabel;
-    private JLabel ssdFreeLabel;
-    private JLabel ssdUsedLabel;
-    private JLabel networkIPLabel;
-    private JLabel networkDownloadSpeedLabel;
-    private JLabel networkUploadSpeedLabel;
-    private JLabel networkDownloadTotalLabel;
-    private JLabel networkUploadTotalLabel;
+    private static JLabel timeLabel;
+    private static JLabel dateLabel;
+    private static JLabel weatherLabel;
+    private static JLabel kernelLabel;
+    private static JLabel uptimeLabel;
+    private static JLabel cpuUsageLabel;
+    private static JLabel cpuTemperatureLabel;
+    private static JLabel cpuNameLabel;
+    private static JLabel ramTotalLabel;
+    private static JLabel ramInUseLabel;
+    private static JLabel ramFreeLabel;
+    private static JLabel ssdTotalLabel;
+    private static JLabel ssdFreeLabel;
+    private static JLabel ssdUsedLabel;
+    private static JLabel networkIPLabel;
+    private static JLabel networkDownloadSpeedLabel;
+    private static JLabel networkUploadSpeedLabel;
+    private static JLabel networkDownloadTotalLabel;
+    private static JLabel networkUploadTotalLabel;
 
-    private JLabel gpuTemperatureLabel;
-    private JLabel gpuUsageLabel;
-    private JLabel gpuNameLabel;
+    private static JLabel gpuTemperatureLabel;
+    private static JLabel gpuUsageLabel;
+    private static JLabel gpuNameLabel;
+    private static String fontType;
+    private static int fontSize;
 
     private HardwareAbstractionLayer hal;
     private OperatingSystem os;
@@ -62,7 +73,19 @@ public class SystemMonitorUI extends JFrame {
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateWeather = Executors.newSingleThreadScheduledExecutor();
-
+    private static int fontColor;
+    private static int bgColor;
+    private static double opacity;
+    private JPanel panel = new JPanel() {
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+            g2d.setColor(getBackground());
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+        }
+    };
 
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu) {
@@ -87,25 +110,27 @@ public class SystemMonitorUI extends JFrame {
             systemInfoExecutor.shutdown();
             weatherUpdateExecutor.shutdown();
         }));
+
     }
 
-    private void initializeUI() {
+
+
+    public void initializeUI() {
         setTitle("System Monitor");
-        setSize(250, 600);
+        setSize(260, 800);
         setUndecorated(true);
-        setAlwaysOnTop(false);
+        setAlwaysOnTop(true);
         setFocusableWindowState(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
         setBackground(new Color(0, 0, 0, 0));
-
-        JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        panel.setBackground(new Color(0, 0, 0, 0));
+        panel.setOpaque(false); // Đảm bảo JPanel trong suốt
+        setBackgroundColorUpdate();
 
-        timeLabel = createLabel("HH:mm", 36);
-        dateLabel = createLabel("EEE, dd MMM yyyy", 18);
+        timeLabel = createLabel("HH:mm", 60);
+        dateLabel = createLabel("EEE, dd MMM yyyy", 20);
         weatherLabel = createLabel("Weather: --", 14);
         BufferedImage blankImage = new BufferedImage(50, 50, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = blankImage.createGraphics();
@@ -114,8 +139,7 @@ public class SystemMonitorUI extends JFrame {
         g2d.dispose();
         ImageIcon transparentIcon = new ImageIcon(blankImage);
         weatherLabel.setIcon(transparentIcon);
-
-        kernelLabel = createLabel("", 14);
+        kernelLabel = createLabel("Computer:-- ", 14);
         uptimeLabel = createLabel("Uptime: 0h 0m 0s", 14);
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
         cpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
@@ -143,36 +167,41 @@ public class SystemMonitorUI extends JFrame {
         panel.add(dateLabel);
         if (showWeather) {
             panel.add(weatherLabel);
+            panel.add(createSeparator("SYSTEM"));
         }
-        panel.add(createSeparator());
+
         panel.add(kernelLabel);
         panel.add(uptimeLabel);
-        panel.add(createSeparator());
         if (showCpu) {
+            panel.add(createSeparator("CPU"));
             panel.add(cpuNameLabel);
             panel.add(cpuUsageLabel);
             panel.add(cpuTemperatureLabel);
         }
-        panel.add(createSeparator());
+
         if (showGpu) {
+            panel.add(createSeparator("GPU"));
             panel.add(gpuNameLabel);
             panel.add(gpuTemperatureLabel);
             panel.add(gpuUsageLabel);
         }
-        panel.add(createSeparator());
+
         if (showRam) {
+            panel.add(createSeparator("RAM"));
             panel.add(ramTotalLabel);
             panel.add(ramInUseLabel);
             panel.add(ramFreeLabel);
         }
-        panel.add(createSeparator());
+
         if (showSsd) {
+            panel.add(createSeparator("STORAGE"));
             panel.add(ssdTotalLabel);
             panel.add(ssdFreeLabel);
             panel.add(ssdUsedLabel);
         }
-        panel.add(createSeparator());
+
         if (showNetwork) {
+            panel.add(createSeparator("NETWORK"));
             panel.add(networkIPLabel);
             panel.add(networkDownloadSpeedLabel);
             panel.add(networkUploadSpeedLabel);
@@ -183,6 +212,19 @@ public class SystemMonitorUI extends JFrame {
         add(panel);
     }
 
+    private void setBackgroundColorUpdate() {
+        JSONObject settings = SettingsLogger.loadSettings();
+        if (!settings.isEmpty()) {
+            int bgColor = settings.getInt("bgColor");
+            panel.setBackground(new Color(bgColor));
+        }
+    }
+
+    private static WinDef.HWND getHWnd(Component w) {
+        WinDef.HWND hwnd = new WinDef.HWND();
+        hwnd.setPointer(Native.getComponentPointer(w));
+        return hwnd;
+    }
     private void initializeSystemInfo() {
         SystemInfo systemInfo = new SystemInfo();
         hal = systemInfo.getHardware();
@@ -201,6 +243,7 @@ public class SystemMonitorUI extends JFrame {
     }
 
     private void startUpdateTimer() {
+
         // Update weather if first time can not be done because of network issues
         if ((showNetwork) && (networkIPLabel.getText().equals("IP: --"))) {
             checkUpdateNet.scheduleAtFixedRate(() -> {
@@ -230,17 +273,67 @@ public class SystemMonitorUI extends JFrame {
 
     private JLabel createLabel(String text, int fontSize) {
         JLabel label = new JLabel(text);
-        label.setFont(new Font("SansSerif", Font.BOLD, fontSize));
-        label.setForeground(Color.YELLOW);
+        JSONObject settings = SettingsLogger.loadSettings();
+
+        if (!settings.isEmpty()) {
+            String fontType = settings.getString("fontType");
+            fontSize = settings.getInt("fontSize");
+            fontColor = settings.optInt("fontColor", Color.WHITE.getRGB());
+        } else {
+            String fontType = "SansSerif";
+            fontSize = 14;
+        }
+
+        label.setFont(new Font(fontType, Font.PLAIN, fontSize));
+        label.setForeground(new Color(fontColor));
         return label;
     }
+    void updateSetting(){
+        setFontUpdate(timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
+        setFontColorUpdate(timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
+        setOpacityUpdate();
+        setBackgroundColorUpdate();
 
-    private JSeparator createSeparator() {
-        JSeparator separator = new JSeparator(SwingConstants.HORIZONTAL);
-        separator.setForeground(Color.GREEN);
-        return separator;
     }
 
+    void setOpacityUpdate(){
+        JSONObject settings = SettingsLogger.loadSettings();
+        if (!settings.isEmpty()) {
+            double opacity = settings.getDouble("opacity");
+            this.setOpacity((float) opacity);  // Fixed here
+        }
+    }
+    static void setFontUpdate(JLabel... labels){
+        JSONObject settings = SettingsLogger.loadSettings();
+        if (!settings.isEmpty()) {
+            fontType = settings.getString("fontType");
+            fontSize = settings.getInt("fontSize");
+            fontColor = settings.optInt("fontColor", Color.WHITE.getRGB());
+        } else {
+            fontType = "SansSerif";
+            fontSize = 14;
+        }
+
+        for (JLabel label : labels) {
+            label.setFont(new Font(fontType, Font.PLAIN, fontSize));
+        }
+    }
+    static void setFontColorUpdate(JLabel... labels){
+        JSONObject settings = SettingsLogger.loadSettings();
+        fontColor = settings.optInt("fontColor", Color.WHITE.getRGB());
+        for (JLabel label : labels) {
+            label.setForeground(new Color(fontColor));
+        }
+    }
+
+    private JLabel createSeparator(String text) {
+        String htmlText = "<html><div style='font-size: 16px; font-family: SansSerif; font-weight: bold; color: yellow;'>"
+                + text + "<div style='height: 2px; background-color: yellow; width:1000px;'></div></div></html>";
+
+        JLabel separator = new JLabel(htmlText);
+        separator.setBorder(new EmptyBorder(5, 0, 5, 0));
+        return separator;
+    }
     private void updateSystemInfo() {
         try {
             SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
@@ -307,6 +400,10 @@ public class SystemMonitorUI extends JFrame {
                 networkDownloadTotalLabel.setText(String.format("Download Total: %.2f MiB", downloadBytes / 1e6));
                 networkUploadTotalLabel.setText(String.format("Upload Total: %.2f MiB", uploadBytes / 1e6));
             }
+            if (SettingsPanel.checkSettings) {
+                updateSetting();
+                SettingsPanel.checkSettings = Boolean.FALSE;
+            }
             repaint();
         } catch (Exception e) {
             e.printStackTrace();
@@ -365,10 +462,16 @@ public class SystemMonitorUI extends JFrame {
                         settingsUI.isNetworkSelected(),
                         settingsUI.isWeatherSelected(),
                         settingsUI.isGpuSelected()
-
                 );
                 ui.setVisible(true);
+                WinDef.HWND hwnd = getHWnd(ui);
+                int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
+                exStyle |= WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
+                User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
+                SystemTrayApp systemTrayApp = new SystemTrayApp();
             }
         });
+
     }
+
 }

@@ -68,15 +68,6 @@ public class ServiceManager {
 
 
 
-    public static void main(String[] args){
-        HwInfo hwInfo = HwInfo.getHwInfo();
-        System.out.println("CPU Temperature: " + hwInfo.cpuTemperature());
-        System.out.println("GPU Temperature: " + hwInfo.gpuTemperature());
-        System.out.println("CPU Usage: " + hwInfo.cpuUsage());
-        System.out.println("GPU Usage: " + hwInfo.gpuUsage());
-        System.out.println("CPU Name: " + hwInfo.cpuName());
-        System.out.println("GPU Name: " + hwInfo.gpuName());
-    }
 
 
     private static void startAndEnsureServiceRunning() {
@@ -105,6 +96,7 @@ public class ServiceManager {
     private static JSONArray readSensorData() {
         JSONParser parser = new JSONParser();
         try (FileReader reader = new FileReader(ServiceManager.SENSOR_DATA_FILE_PATH)) {
+
             return (JSONArray) parser.parse(reader);
         } catch (IOException | ParseException e) {
             e.printStackTrace();
