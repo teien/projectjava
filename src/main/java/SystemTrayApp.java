@@ -12,18 +12,17 @@ public class SystemTrayApp {
 
         public SettingsDialog(JFrame parent) {
             super(parent, "Settings", true);
-            setSize(400, 350);  // Tăng chiều cao để chứa thêm lựa chọn font type
+            setSize(800, 450);
             setLocationRelativeTo(parent);
             setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
             SettingsPanel settingsPanel = new SettingsPanel();
             add(settingsPanel, BorderLayout.CENTER);
-
             JButton applyButton = new JButton("Apply");
             applyButton.addActionListener(e -> {
                 SettingsPanel.applySettings();
             });
             add(applyButton, BorderLayout.SOUTH);
+            SettingsPanel.loadSettings();
         }
     }
 
@@ -35,6 +34,7 @@ public class SystemTrayApp {
             System.out.println("System Tray is not supported");
             return;
         }
+
 
         Image image = loadIconImage();
         trayIcon = new TrayIcon(image, "System Monitor");
@@ -54,7 +54,6 @@ public class SystemTrayApp {
             public void mouseReleased(MouseEvent e) {
                 maybeShowPopupMenu(e);
             }
-
             private void maybeShowPopupMenu(MouseEvent e) {
                 if (e.isPopupTrigger()) {
                     popupMenu.show(e.getComponent(), e.getX(), e.getY());
@@ -101,18 +100,17 @@ public class SystemTrayApp {
             JFrame frame = new JFrame();
             SettingsDialog settingsDialog = new SettingsDialog(frame);
             settingsDialog.setVisible(true);
+
         });
-
         exitItem.addActionListener(e -> System.exit(0));
-
         return menu;
     }
 
     private void createInvisibleFrame() {
         JFrame frame = new JFrame();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setUndecorated(true); // Hide title bar and minimize/maximize buttons
-        frame.setSize(0, 0); // Hide parent JFrame
+        frame.setUndecorated(true);
+        frame.setSize(0, 0);
         frame.setLocationRelativeTo(null);
     }
 
@@ -131,9 +129,5 @@ public class SystemTrayApp {
                 popupMenu.setVisible(false);
             }
         }
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(SystemTrayApp::new);
     }
 }

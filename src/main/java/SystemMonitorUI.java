@@ -51,8 +51,15 @@ public class SystemMonitorUI extends JFrame {
     private static JLabel gpuTemperatureLabel;
     private static JLabel gpuUsageLabel;
     private static JLabel gpuNameLabel;
-    private static String fontType;
-    private static int fontSize;
+    private static JLabel SYSTEMLabel;
+    private static JLabel CPULabel;
+    private static JLabel GPULabel;
+    private static JLabel RAMLabel;
+    private static JLabel SSDLabel;
+    private static JLabel NETWORKLabel;
+
+    private static String fontType1;
+    private static int fontSize1;
 
     private HardwareAbstractionLayer hal;
     private OperatingSystem os;
@@ -73,7 +80,12 @@ public class SystemMonitorUI extends JFrame {
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateWeather = Executors.newSingleThreadScheduledExecutor();
-    private static int fontColor;
+    private static int fontColor1;
+    private static int bgColor1;
+    private static double opacity1;
+    private static int fontColor2;
+    private static String fontType2;
+    private static int fontSize2;
     private static int bgColor;
     private static double opacity;
     private JPanel panel = new JPanel() {
@@ -117,7 +129,9 @@ public class SystemMonitorUI extends JFrame {
 
     public void initializeUI() {
         setTitle("System Monitor");
-        setSize(260, 800);
+        setMaximumSize(new Dimension(1000, getMaximumSize().height));
+        setMinimumSize(new Dimension(250, 900));
+        setResizable(false);
         setUndecorated(true);
         setAlwaysOnTop(true);
         setFocusableWindowState(false);
@@ -127,7 +141,10 @@ public class SystemMonitorUI extends JFrame {
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
         panel.setOpaque(false); // Đảm bảo JPanel trong suốt
+        panel.setBackground(new Color(0, 0, 0, 0));
         setBackgroundColorUpdate();
+        setOpacityUpdate();
+
 
         timeLabel = createLabel("HH:mm", 60);
         dateLabel = createLabel("EEE, dd MMM yyyy", 20);
@@ -162,46 +179,52 @@ public class SystemMonitorUI extends JFrame {
         networkUploadSpeedLabel = createLabel("Upload Speed: 0 kB/s", 14);
         networkDownloadTotalLabel = createLabel("Download Total: 0 MiB", 14);
         networkUploadTotalLabel = createLabel("Upload Total: 0 KiB", 14);
+        SYSTEMLabel = createSeparator("SYSTEM");
+        CPULabel = createSeparator("CPU");
+        GPULabel = createSeparator("GPU");
+        RAMLabel = createSeparator("RAM");
+        SSDLabel = createSeparator("STORAGE");
+        NETWORKLabel = createSeparator("NETWORK");
 
         panel.add(timeLabel);
         panel.add(dateLabel);
         if (showWeather) {
             panel.add(weatherLabel);
-            panel.add(createSeparator("SYSTEM"));
+            panel.add(SYSTEMLabel);
         }
 
         panel.add(kernelLabel);
         panel.add(uptimeLabel);
         if (showCpu) {
-            panel.add(createSeparator("CPU"));
+            panel.add(CPULabel);
             panel.add(cpuNameLabel);
             panel.add(cpuUsageLabel);
             panel.add(cpuTemperatureLabel);
         }
 
         if (showGpu) {
-            panel.add(createSeparator("GPU"));
+            panel.add(GPULabel);
             panel.add(gpuNameLabel);
             panel.add(gpuTemperatureLabel);
             panel.add(gpuUsageLabel);
         }
 
         if (showRam) {
-            panel.add(createSeparator("RAM"));
+            panel.add(RAMLabel);
             panel.add(ramTotalLabel);
             panel.add(ramInUseLabel);
             panel.add(ramFreeLabel);
         }
 
         if (showSsd) {
-            panel.add(createSeparator("STORAGE"));
+            panel.add(SSDLabel);
             panel.add(ssdTotalLabel);
             panel.add(ssdFreeLabel);
             panel.add(ssdUsedLabel);
         }
 
         if (showNetwork) {
-            panel.add(createSeparator("NETWORK"));
+            panel.add(NETWORKLabel);
             panel.add(networkIPLabel);
             panel.add(networkDownloadSpeedLabel);
             panel.add(networkUploadSpeedLabel);
@@ -216,9 +239,13 @@ public class SystemMonitorUI extends JFrame {
         JSONObject settings = SettingsLogger.loadSettings();
         if (!settings.isEmpty()) {
             int bgColor = settings.getInt("bgColor");
-            panel.setBackground(new Color(bgColor));
+            // Sử dụng giá trị bgColor trực tiếp, coi như ARGB
+            Color colorWithAlpha = new Color(bgColor, true);
+            panel.setBackground(colorWithAlpha);
         }
     }
+
+
 
     private static WinDef.HWND getHWnd(Component w) {
         WinDef.HWND hwnd = new WinDef.HWND();
@@ -271,28 +298,30 @@ public class SystemMonitorUI extends JFrame {
 
     }
 
-    private JLabel createLabel(String text, int fontSize) {
+    private JLabel createLabel(String text, int fontSize1) {
         JLabel label = new JLabel(text);
         JSONObject settings = SettingsLogger.loadSettings();
 
         if (!settings.isEmpty()) {
-            String fontType = settings.getString("fontType");
-            fontSize = settings.getInt("fontSize");
-            fontColor = settings.optInt("fontColor", Color.WHITE.getRGB());
+            fontType1 = settings.getString("fontType1");
+            fontSize1 = settings.getInt("fontSize1");
+            fontColor1 = settings.optInt("fontColor1", Color.WHITE.getRGB());
         } else {
-            String fontType = "SansSerif";
-            fontSize = 14;
+            fontType1 = "SansSerif";
+            fontSize1 = 14;
         }
 
-        label.setFont(new Font(fontType, Font.PLAIN, fontSize));
-        label.setForeground(new Color(fontColor));
+        label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
+        label.setForeground(new Color(fontColor1));
         return label;
     }
     void updateSetting(){
         setFontUpdate(timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
         setFontColorUpdate(timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
+        setFontUpdateTitle(SYSTEMLabel,CPULabel,GPULabel,RAMLabel,SSDLabel,NETWORKLabel);
         setOpacityUpdate();
         setBackgroundColorUpdate();
+
 
     }
 
@@ -306,34 +335,69 @@ public class SystemMonitorUI extends JFrame {
     static void setFontUpdate(JLabel... labels){
         JSONObject settings = SettingsLogger.loadSettings();
         if (!settings.isEmpty()) {
-            fontType = settings.getString("fontType");
-            fontSize = settings.getInt("fontSize");
-            fontColor = settings.optInt("fontColor", Color.WHITE.getRGB());
+            fontType1 = settings.getString("fontType1");
+            fontSize1 = settings.getInt("fontSize1");
+            fontColor1 = settings.optInt("fontColor1", Color.WHITE.getRGB());
         } else {
-            fontType = "SansSerif";
-            fontSize = 14;
+            fontType1 = "SansSerif";
+            fontSize1 = 14;
         }
 
         for (JLabel label : labels) {
-            label.setFont(new Font(fontType, Font.PLAIN, fontSize));
+            label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
         }
+    }
+    static void setFontUpdateTitle(JLabel... labels){
+        JSONObject settings = SettingsLogger.loadSettings();
+        if (!settings.isEmpty()) {
+            fontType2 = settings.getString("fontType2");
+            fontSize2 = settings.getInt("fontSize2");
+            fontColor2 = settings.optInt("fontColor2", Color.WHITE.getRGB());
+        } else {
+            fontType2 = "SansSerif";
+            fontSize2 = 14;
+        }
+
+        for (JLabel label : labels) {
+            String fontColorHex = String.format("#%06X", (0xFFFFFF & fontColor2));
+            label.setText("<html><div style='font-weight: bold;'>"
+                    + getPlainText(label) + "<div style='height: 2px; width:1000px;background-color: " + fontColorHex + ";'></div></div></html>");
+            label.setFont(new Font(fontType2, Font.PLAIN, fontSize2));
+            label.setForeground(new Color(fontColor2));
+        }
+    }
+    private static String getPlainText(JLabel label) {
+        String htmlText = label.getText();
+        return htmlText.replaceAll("<[^>]*>", "");
     }
     static void setFontColorUpdate(JLabel... labels){
         JSONObject settings = SettingsLogger.loadSettings();
-        fontColor = settings.optInt("fontColor", Color.WHITE.getRGB());
+        fontColor1 = settings.optInt("fontColor1", Color.WHITE.getRGB());
         for (JLabel label : labels) {
-            label.setForeground(new Color(fontColor));
+            label.setForeground(new Color(fontColor1));
         }
     }
 
     private JLabel createSeparator(String text) {
-        String htmlText = "<html><div style='font-size: 16px; font-family: SansSerif; font-weight: bold; color: yellow;'>"
-                + text + "<div style='height: 2px; background-color: yellow; width:1000px;'></div></div></html>";
-
+        JSONObject settings = SettingsLogger.loadSettings();
+        if (!settings.isEmpty()) {
+            fontType2 = settings.getString("fontType2");
+            fontSize2 = settings.getInt("fontSize2");
+            fontColor2 = settings.optInt("fontColor2", Color.WHITE.getRGB());
+        } else {
+            fontType2 = "SansSerif";
+            fontSize2 = 14;
+        }
+        String fontColorHex = String.format("#%06X", (0xFFFFFF & fontColor2));
+        String htmlText = "<html><div style='font-weight: bold;'>"
+                + text + "<div style='height: 2px; width:1000px;background-color: " + fontColorHex + ";'></div></div></html>";
         JLabel separator = new JLabel(htmlText);
+        separator.setFont(new Font(fontType2, Font.PLAIN, fontSize2));
+        separator.setForeground(new Color(fontColor2));
         separator.setBorder(new EmptyBorder(5, 0, 5, 0));
         return separator;
     }
+
     private void updateSystemInfo() {
         try {
             SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
@@ -420,7 +484,6 @@ public class SystemMonitorUI extends JFrame {
                     SwingUtilities.invokeLater(() -> {
                         weatherLabel.setIcon(icon);
                         weatherLabel.setText("   " + weatherInfo.getTemperature() + "°C" + "    " + weatherInfo.getCity());
-                        System.out.println("Weather updated");
                     });
                 } catch (Exception e) {
                     SwingUtilities.invokeLater(() -> {

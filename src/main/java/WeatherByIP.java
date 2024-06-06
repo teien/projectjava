@@ -117,7 +117,6 @@ public class WeatherByIP {
                     String iconCode = weather.getString("icon");
 
                     double temp = json.getJSONObject("main").getDouble("temp");
-                    System.out.println("Weather: " + iconCode + ", Temp: " + temp);
                     return new WeatherInfo(iconCode, temp);
                 } else {
                     throw new RuntimeException("Failed to fetch weather details");
