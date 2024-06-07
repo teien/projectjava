@@ -11,6 +11,7 @@ public class SettingsPanel extends JPanel {
     private static JSpinner fontSizeSpinner2 = new JSpinner();
     private static JButton fontColorButton1 = new JButton();
     private static JButton fontColorButton2 = new JButton();
+    private static final JButton bgColorButton = new JButton();
     private static JComboBox<String> fontTypeComboBox1 = new JComboBox<>();
     private static JComboBox<String> fontTypeComboBox2 = new JComboBox<>();
     private static Color selectedColor1 = Color.WHITE;
@@ -23,12 +24,9 @@ public class SettingsPanel extends JPanel {
         opacitySlider.setMajorTickSpacing(10);
         opacitySlider.setPaintTicks(true);
         opacitySlider.setPaintLabels(true);
-        opacitySlider.addChangeListener(new ChangeListener() {
-            @Override
-            public void stateChanged(ChangeEvent e) {
-                JSlider source = (JSlider) e.getSource();
-                selectedOpacity = source.getValue() / 100.0;
-            }
+        opacitySlider.addChangeListener(e -> {
+            JSlider source = (JSlider) e.getSource();
+            selectedOpacity = source.getValue() / 100.0;
         });
     }
 
@@ -140,7 +138,6 @@ public class SettingsPanel extends JPanel {
             }
         });
         contentPanel.add(bgColorButton, gbc);
-
         add(contentPanel, BorderLayout.CENTER);
     }
 
@@ -202,10 +199,14 @@ static Boolean checkSettings = false;
                 fontTypeComboBox1.setSelectedItem(settings.getString("fontType1"));
                 fontTypeComboBox2.setSelectedItem(settings.getString("fontType2"));
                 fontColorButton1.setBackground(new Color(settings.getInt("fontColor1")));
+                selectedColor1 = new Color(settings.getInt("fontColor1"));
                 fontColorButton2.setBackground(new Color(settings.getInt("fontColor2")));
+                selectedColor2 = new Color(settings.getInt("fontColor2"));
                 selectedOpacity = settings.getDouble("opacity");
                 opacitySlider.setValue((int) (selectedOpacity * 100));
-                selectedBgColor = new Color(settings.getInt("bgColor"));
+                bgColorButton.setBackground(new Color(settings.getInt("bgColor"), true));
+                selectedBgColor = new Color(settings.getInt("bgColor"), true);
+
             }
         } catch (Exception e) {
             e.printStackTrace();

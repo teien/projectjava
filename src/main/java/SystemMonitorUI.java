@@ -1,7 +1,6 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
@@ -11,9 +10,7 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import javax.swing.KeyStroke;
 
-import com.google.gson.JsonObject;
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef;
@@ -47,6 +44,7 @@ public class SystemMonitorUI extends JFrame {
     private static JLabel networkUploadSpeedLabel;
     private static JLabel networkDownloadTotalLabel;
     private static JLabel networkUploadTotalLabel;
+    private static JLabel processLabel;
 
     private static JLabel gpuTemperatureLabel;
     private static JLabel gpuUsageLabel;
@@ -57,6 +55,7 @@ public class SystemMonitorUI extends JFrame {
     private static JLabel RAMLabel;
     private static JLabel SSDLabel;
     private static JLabel NETWORKLabel;
+    private static JLabel PROCESSLabel;
 
     private static String fontType1;
     private static int fontSize1;
@@ -75,6 +74,7 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showNetwork;
     private final boolean showWeather;
     private final boolean showGpu;
+    private final boolean showProcess;
 
     private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -100,32 +100,36 @@ public class SystemMonitorUI extends JFrame {
     };
 
 
-    public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu) {
+    public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
         this.showCpu = showCpu;
         this.showRam = showRam;
         this.showSsd = showSsd;
         this.showNetwork = showNetwork;
         this.showWeather = showWeather;
         this.showGpu = showGpu;
+        this.showProcess = showProcess;
 
         initializeUI();
         initializeSystemInfo();
         startUpdateTimer();
-
-        Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-        int w = this.getSize().width;
-        int x = (dim.width - w);
-        int y = 0;
-        this.setLocation(x, y);
+        // Set the location of the window to the top right corner of the screen
+       updateLocation();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             systemInfoExecutor.shutdown();
             weatherUpdateExecutor.shutdown();
+            checkUpdateNet.shutdown();
+            checkUpdateWeather.shutdown();
         }));
 
     }
 
-
+    private void updateLocation() {
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int x = screenSize.width -getWidth();
+        int y = 0;
+        setLocation(x, y);
+    }
 
     public void initializeUI() {
         setTitle("System Monitor");
@@ -140,7 +144,7 @@ public class SystemMonitorUI extends JFrame {
         setBackground(new Color(0, 0, 0, 0));
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        panel.setOpaque(false); // Đảm bảo JPanel trong suốt
+        panel.setOpaque(false);
         panel.setBackground(new Color(0, 0, 0, 0));
         setBackgroundColorUpdate();
         setOpacityUpdate();
@@ -161,6 +165,7 @@ public class SystemMonitorUI extends JFrame {
         cpuUsageLabel = createLabel("CPU Usage: 0%", 14);
         cpuTemperatureLabel = createLabel("CPU Temperature: 0°C", 14);
         cpuNameLabel = createLabel("CPU: --", 16);
+        processLabel = createLabel("Process: --", 16);
 
         gpuNameLabel = createLabel("GPU: --", 16);
         gpuTemperatureLabel = createLabel("GPU Temperature: 0°C", 14);
@@ -185,6 +190,7 @@ public class SystemMonitorUI extends JFrame {
         RAMLabel = createSeparator("RAM");
         SSDLabel = createSeparator("STORAGE");
         NETWORKLabel = createSeparator("NETWORK");
+        PROCESSLabel = createSeparator("PROCESS");
 
         panel.add(timeLabel);
         panel.add(dateLabel);
@@ -200,6 +206,10 @@ public class SystemMonitorUI extends JFrame {
             panel.add(cpuNameLabel);
             panel.add(cpuUsageLabel);
             panel.add(cpuTemperatureLabel);
+        }
+        if (showProcess) {
+            panel.add(PROCESSLabel);
+            panel.add(processLabel);
         }
 
         if (showGpu) {
@@ -239,7 +249,6 @@ public class SystemMonitorUI extends JFrame {
         JSONObject settings = SettingsLogger.loadSettings();
         if (!settings.isEmpty()) {
             int bgColor = settings.getInt("bgColor");
-            // Sử dụng giá trị bgColor trực tiếp, coi như ARGB
             Color colorWithAlpha = new Color(bgColor, true);
             panel.setBackground(colorWithAlpha);
         }
@@ -435,8 +444,8 @@ public class SystemMonitorUI extends JFrame {
                 long availableMemory = memory.getAvailable();
                 long usedMemory = totalMemory - availableMemory;
                 ramTotalLabel.setText(String.format("RAM Total: %.2f GiB", totalMemory / 1e9));
-                ramInUseLabel.setText(String.format("In Use: %.2f GiB", usedMemory / 1e9));
-                ramFreeLabel.setText(String.format("Free: %.2f GiB", availableMemory / 1e9));
+                ramInUseLabel.setText(String.format("In Use: %.2f GiB", usedMemory / 1e9) +"    ("+String.format("%.1f%%", (double) usedMemory / totalMemory * 100)+")");
+                ramFreeLabel.setText(String.format("Free: %.2f GiB", availableMemory / 1e9)+"   ("+String.format("%.1f%%", (double) availableMemory / totalMemory * 100)+")");
             }
 
             if (showSsd && !hal.getDiskStores().isEmpty()) {
@@ -516,24 +525,27 @@ public class SystemMonitorUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             JFrame dummyFrame = new JFrame();
             SettingUI settingsUI = new SettingUI(dummyFrame);
-            settingsUI.setVisible(true);
-            if (settingsUI.isSettingsAccepted()) {
+            //settingsUI.setVisible(true);
+            //if (settingsUI.isSettingsAccepted()) {
                 SystemMonitorUI ui = new SystemMonitorUI(
                         settingsUI.isCpuSelected(),
                         settingsUI.isRamSelected(),
                         settingsUI.isSsdSelected(),
                         settingsUI.isNetworkSelected(),
                         settingsUI.isWeatherSelected(),
-                        settingsUI.isGpuSelected()
+                        settingsUI.isGpuSelected(),
+                        settingsUI.isProcessSelected()
                 );
                 ui.setVisible(true);
+                SystemTrayApp systemTrayApp = new SystemTrayApp();
                 WinDef.HWND hwnd = getHWnd(ui);
                 int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
                 exStyle |= WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
                 User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-                SystemTrayApp systemTrayApp = new SystemTrayApp();
-            }
+
+            //}
         });
+
 
     }
 

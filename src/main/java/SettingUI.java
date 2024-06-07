@@ -12,6 +12,7 @@ public class SettingUI extends JDialog {
     private final JCheckBox networkCheckBox;
     private final JCheckBox gpuCheckBox;
     private final JCheckBox weatherCheckBox;
+    private final JCheckBox processCheckBox;
 
 
     private boolean settingsAccepted;
@@ -30,6 +31,7 @@ public class SettingUI extends JDialog {
         networkCheckBox = new JCheckBox("Show Network Info", true);
         gpuCheckBox = new JCheckBox("Show GPU Info", true);
         weatherCheckBox = new JCheckBox("Show Weather Info", true);
+        processCheckBox = new JCheckBox("Show Process Info", true);
 
         checkBoxPanel.add(cpuCheckBox);
         checkBoxPanel.add(ramCheckBox);
@@ -37,6 +39,7 @@ public class SettingUI extends JDialog {
         checkBoxPanel.add(networkCheckBox);
         checkBoxPanel.add(gpuCheckBox);
         checkBoxPanel.add(weatherCheckBox);
+        checkBoxPanel.add(processCheckBox);
         add(checkBoxPanel, BorderLayout.CENTER);
         JPanel buttonsPanel = getjPanel();
         add(buttonsPanel, BorderLayout.SOUTH);
@@ -90,5 +93,9 @@ public class SettingUI extends JDialog {
     public boolean isWeatherSelected() {
 
         return weatherCheckBox.isSelected();
+    }
+    public boolean isProcessSelected() {
+
+        return processCheckBox.isSelected();
     }
 }

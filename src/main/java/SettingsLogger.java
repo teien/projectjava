@@ -1,7 +1,6 @@
 import java.awt.*;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
@@ -26,6 +25,30 @@ public class SettingsLogger {
         }
     }
     public static JSONObject loadSettings() {
+        File file = new File(SETTINGS_FILE);
+        if (!file.exists() || file.length() == 0) {
+            String defaultSettingsContent = """
+                    {
+                        "bgColor": 11168863,
+                        "fontType1": "Bad Script",
+                        "fontType2": "Bad Script",
+                        "fontSize1": 13,
+                        "fontColor2": -52480,
+                        "fontColor1": -1118482,
+                        "fontSize2": 15,
+                        "opacity": 0.53
+                    }""";
+            try {
+                FileWriter fileWriter = new FileWriter(file);
+                BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+                bufferedWriter.write(defaultSettingsContent);
+                bufferedWriter.close();
+                System.out.println("Tệp tin cài đặt đã được tạo.");
+            } catch (IOException e) {
+                System.out.println("Đã xảy ra lỗi khi tạo tệp tin cài đặt.");
+                e.printStackTrace();
+            }
+        }
         try (FileReader reader = new FileReader(SETTINGS_FILE)) {
             return new JSONObject(new JSONTokener(reader));
         } catch (IOException e) {
