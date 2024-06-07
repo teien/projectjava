@@ -1,13 +1,15 @@
 import javax.swing.*;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.sql.Time;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class SystemTrayApp {
+
     public static class SettingsDialog extends JDialog {
 
         public SettingsDialog(JFrame parent) {
@@ -28,36 +30,40 @@ public class SystemTrayApp {
 
     private TrayIcon trayIcon;
     private JPopupMenu popupMenu;
+    private JFrame frame;
 
     public SystemTrayApp() {
         if (!SystemTray.isSupported()) {
             System.out.println("System Tray is not supported");
             return;
         }
-
-
         Image image = loadIconImage();
         trayIcon = new TrayIcon(image, "System Monitor");
         trayIcon.setImageAutoSize(true);
-
         popupMenu = createPopupMenu();
-
         createInvisibleFrame();
 
         trayIcon.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
-                maybeShowPopupMenu(e);
+                if (e.isPopupTrigger()) {
+                    showPopupMenu(e);
+                }
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                maybeShowPopupMenu(e);
-            }
-            private void maybeShowPopupMenu(MouseEvent e) {
                 if (e.isPopupTrigger()) {
-                    popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                    showPopupMenu(e);
                 }
+            }
+
+            private void showPopupMenu(MouseEvent e) {
+                SwingUtilities.invokeLater(() -> {
+                    popupMenu.setLocation(e.getXOnScreen(), e.getYOnScreen());
+                    popupMenu.setInvoker(frame);
+                    popupMenu.setVisible(true);
+                });
             }
         });
 
@@ -71,16 +77,27 @@ public class SystemTrayApp {
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
         executor.scheduleAtFixedRate(this::updateTrayIcon, 0, 1, TimeUnit.SECONDS);
 
+        // Add a global mouse listener to hide the popup menu
         Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
-            if (event instanceof MouseEvent mouseEvent) {
-                maybeHidePopupMenu(mouseEvent);
+            if (event instanceof MouseEvent) {
+                MouseEvent me = (MouseEvent) event;
+                if (popupMenu.isVisible() && me.getID() == MouseEvent.MOUSE_PRESSED) {
+                    Point mousePoint = me.getLocationOnScreen();
+                    Rectangle popupBounds = popupMenu.getBounds();
+                    Point popupLocation = popupMenu.getLocationOnScreen();
+                    popupBounds.setLocation(popupLocation);
+
+                    if (!popupBounds.contains(mousePoint)) {
+                        popupMenu.setVisible(false);
+                    }
+                }
             }
         }, AWTEvent.MOUSE_EVENT_MASK);
     }
 
     private Image loadIconImage() {
         try {
-            return Toolkit.getDefaultToolkit().getImage(SystemTrayApp.class.getResource("icon.png"));
+            return Toolkit.getDefaultToolkit().getImage(SystemTrayApp.class.getResource("/icon.png"));
         } catch (Exception e) {
             System.out.println("Icon not found, using default");
             return new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
@@ -97,37 +114,48 @@ public class SystemTrayApp {
         menu.add(exitItem);
 
         settingsItem.addActionListener(e -> {
-            JFrame frame = new JFrame();
             SettingsDialog settingsDialog = new SettingsDialog(frame);
             settingsDialog.setVisible(true);
-
         });
         exitItem.addActionListener(e -> System.exit(0));
+
+        menu.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {}
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {}
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent e) {
+                menu.setVisible(false);
+            }
+        });
+
         return menu;
     }
 
     private void createInvisibleFrame() {
-        JFrame frame = new JFrame();
+        frame = new JFrame();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setUndecorated(true);
         frame.setSize(0, 0);
         frame.setLocationRelativeTo(null);
+        frame.setType(Window.Type.UTILITY);
+        frame.setVisible(true);
+
+
+        frame.addWindowFocusListener(new WindowAdapter() {
+            @Override
+            public void windowLostFocus(WindowEvent e) {
+                if (popupMenu.isVisible()) {
+                    popupMenu.setVisible(false);
+                }
+            }
+        });
     }
 
     private void updateTrayIcon() {
         SwingUtilities.invokeLater(() -> trayIcon.setToolTip("Updated: " + System.currentTimeMillis()));
-    }
-
-    private void maybeHidePopupMenu(MouseEvent e) {
-        if (popupMenu.isVisible()) {
-            Point mousePoint = e.getLocationOnScreen();
-            Rectangle popupBounds = popupMenu.getBounds();
-            Point popupLocation = popupMenu.getLocationOnScreen();
-            popupBounds.setLocation(popupLocation);
-
-            if (!popupBounds.contains(mousePoint)) {
-                popupMenu.setVisible(false);
-            }
-        }
     }
 }
