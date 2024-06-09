@@ -194,18 +194,18 @@ static Boolean checkSettings = false;
         try {
             JSONObject settings = SettingsLogger.loadSettings();
             if (settings != null) {
-                fontSizeSpinner1.setValue(settings.getInt("fontSize1"));
-                fontSizeSpinner2.setValue(settings.getInt("fontSize2"));
-                fontTypeComboBox1.setSelectedItem(settings.getString("fontType1"));
-                fontTypeComboBox2.setSelectedItem(settings.getString("fontType2"));
-                fontColorButton1.setBackground(new Color(settings.getInt("fontColor1")));
-                selectedColor1 = new Color(settings.getInt("fontColor1"));
-                fontColorButton2.setBackground(new Color(settings.getInt("fontColor2")));
-                selectedColor2 = new Color(settings.getInt("fontColor2"));
-                selectedOpacity = settings.getDouble("opacity");
+                fontSizeSpinner1.setValue(settings.getJSONObject("Style").getInt("fontSize1"));
+                fontSizeSpinner2.setValue(settings.getJSONObject("Style").getInt("fontSize2"));
+                fontTypeComboBox1.setSelectedItem(settings.getJSONObject("Style").getString("fontType1"));
+                fontTypeComboBox2.setSelectedItem(settings.getJSONObject("Style").getString("fontType2"));
+                fontColorButton1.setBackground(new Color(settings.getJSONObject("Style").getInt("fontColor1")));
+                selectedColor1 = new Color(settings.getJSONObject("Style").getInt("fontColor1"));
+                fontColorButton2.setBackground(new Color(settings.getJSONObject("Style").getInt("fontColor2")));
+                selectedColor2 = new Color(settings.getJSONObject("Style").getInt("fontColor2"));
+                selectedOpacity = settings.getJSONObject("Style").getDouble("opacity");
                 opacitySlider.setValue((int) (selectedOpacity * 100));
-                bgColorButton.setBackground(new Color(settings.getInt("bgColor"), true));
-                selectedBgColor = new Color(settings.getInt("bgColor"), true);
+                bgColorButton.setBackground(new Color(settings.getJSONObject("Style").getInt("bgColor"), true));
+                selectedBgColor = new Color(settings.getJSONObject("Style").getInt("bgColor"), true);
 
             }
         } catch (Exception e) {

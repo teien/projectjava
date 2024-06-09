@@ -98,4 +98,5 @@ public class SettingUI extends JDialog {
 
         return processCheckBox.isSelected();
     }
+
 }

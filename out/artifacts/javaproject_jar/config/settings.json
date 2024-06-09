@@ -1,0 +1,53 @@
+{
+    "Show/Hide": {
+        "showSsdName": true,
+        "showNETWORKTitle": true,
+        "showGPUTitle": true,
+        "showDate": true,
+        "showSSDTitle": true,
+        "showWeatherIcon": true,
+        "showSsdUsed": true,
+        "showGpuTemp": true,
+        "showTimeTitle": true,
+        "showProcess": true,
+        "showRAMTitle": true,
+        "showNetworkIP": true,
+        "showGpuName": true,
+        "showNetworkDownloadSpeed": true,
+        "showCpuUsage": true,
+        "showGpuUsage": true,
+        "showTime": true,
+        "showRamTotal": true,
+        "showWeatherTemp": true,
+        "showRamInUse": true,
+        "showNetworkDownloadTotal": true,
+        "showNetworkUploadSpeed": true,
+        "showWeatherTitle": true,
+        "showCPUTitle": true,
+        "showCpuName": true,
+        "showWeather": true,
+        "showSsdTotal": true,
+        "showSsdFree": true,
+        "showNetworkUploadTotal": true,
+        "showCpuTemp": true,
+        "showRamFree": true,
+        "showWeatherCity": true,
+        "showProcessTitle": true
+    },
+    "Screen": {
+        "width": 250,
+        "yc": 0,
+        "xc": 250,
+        "height": 1080
+    },
+    "Style": {
+        "bgColor": 281857228,
+        "fontType1": "JetBrains Mono NL Light",
+        "fontType2": "Bad Script",
+        "fontSize1": 12,
+        "fontColor2": -52480,
+        "fontColor1": -1118482,
+        "fontSize2": 16,
+        "opacity": 1
+    }
+}

@@ -23,7 +23,6 @@ public class WeatherByIP {
                         return weatherInfo;
                     });
         }
-
         return getPublicIP()
                 .thenCompose(WeatherByIP::getLocationFromIP)
                 .thenCompose(locationInfo -> {
@@ -56,13 +55,13 @@ public class WeatherByIP {
             }
         }).exceptionally(e -> {
             System.err.println("Error occurred during fetching public IP: " + e.getMessage());
-            return "unknown";
+            return null;
         });
     }
 
     private static CompletableFuture<LocationInfo> getLocationFromIP(String ip) {
         return CompletableFuture.supplyAsync(() -> {
-            if ("unknown".equals(ip)) {
+            if (ip == null) {
                 return new LocationInfo("0", "0", "Unknown");
             }
             try {
