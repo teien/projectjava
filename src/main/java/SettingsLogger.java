@@ -60,7 +60,10 @@ public class SettingsLogger {
                  "showCpuTemp": true,
                  "showRamFree": true,
                  "showWeatherCity": true,
-                 "showProcessTitle": true
+                 "showKernel": true,
+                 "showUptime": true,
+                 "showProcessTitle": true,
+                 "showSYSTEMTitle": true
              }
         
             }""";

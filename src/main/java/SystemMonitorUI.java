@@ -90,6 +90,7 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showGpu;
     private final boolean showProcess;
 
+
     private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
@@ -225,7 +226,15 @@ public class SystemMonitorUI extends JFrame {
                 panel.add(weatherLabel);
             }
         }
-
+        if(settings.getJSONObject("Show/Hide").getBoolean("showSYSTEMTitle")){
+            panel.add(SYSTEMLabel);
+        }
+        if(settings.getJSONObject("Show/Hide").getBoolean("showKernel")){
+            panel.add(kernelLabel);
+        }
+        if(settings.getJSONObject("Show/Hide").getBoolean("showUptime")){
+            panel.add(uptimeLabel);
+        }
         if (showCpu) {
             if (settings.getJSONObject("Show/Hide").getBoolean("showCPUTitle")) {
                 panel.add(CPULabel);
