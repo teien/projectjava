@@ -144,7 +144,7 @@ public class WeatherByIP {
         }
 
         public double getTemperature() {
-            return temperature;
+            return (int) Math.ceil(temperature) ;
         }
 
         public String getCity() {

@@ -1,81 +1,77 @@
-import java.awt.*;
-import java.io.*;
-
 import org.json.JSONObject;
 import org.json.JSONTokener;
+
+import java.awt.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class SettingsLogger {
     private static final String SETTINGS_FILE = "settings.json";
     private static final String DEFAULT_SETTINGS = """
             {
               "Style": {
-                 "bgColor": 203451456,
-                 "fontType1": "JetBrains Mono",
-                 "fontType2": "Candara Light",
-                 "fontSize1": 12,
-                 "fontColor2": -52480,
-                 "fontColor1": -1118482,
-                 "fontSize2": 14,
-                 "opacity": 1
-              },
-              "Screen": {
+                  "bgColor": 203451456,
+                  "fontType1": "JetBrains Mono NL Thin",
+                  "fontType2": "Bad Script",
+                  "fontSize1": 12,
+                  "fontColor2": -52480,
+                  "fontColor1": -1118482,
+                  "fontSize2": 15,
+                  "opacity": 1
+                   },
+              "Screen":{
                  "xc": 0,
                  "yc": 0,
                  "width": 250,
                  "height": 900
               },
               "Show/Hide": {
-                      "showCPUTitle": true,
-                      "showCpuName": true,
-                      "showCpuUsage": true,
-                      "showCpuTemp": true,
-              
-                      "showGpuTitle": true,
-                      "showGpuName": true,
-                      "showGpuUsage": true,
-                      "showGpuTemp": true,
-              
-                      "showRamTitle": true,
-                      "showRamInUse": true,
-                      "showRamFree": true,
-                     "showRamTotal": true,
-              
-                      "showDiskTitle": true,
-                      "showDiskName": true,
-                      "showDiskUsage": true,
-                      "showDiskFree": true,
-                      "showDiskTotal": true,
-              
-                      "showNetTitle": true,
-                      "showNetName": true,
-                      "showNetUsage": true,
-                      "showNetTotal": true,
-                      "showNetSpeed": true,
-              
-                      "showTimeTitle": true,
-                      "showTime": true,
-                      "showDate": true,
-              
-                      "showWeatherTitle": true,
-                      "showWeather": true,
-                      "showWeatherIcon": true,
-                      "showWeatherTemp": true,
-                      "showWeatherCity": true
-                  }
-              "": {
-              }
+                 "showSsdName": true,
+                 "showNETWORKTitle": true,
+                 "showGPUTitle": true,
+                 "showDate": true,
+                 "showSSDTitle": true,
+                 "showWeatherIcon": true,
+                 "showSsdUsed": true,
+                 "showGpuTemp": true,
+                 "showTimeTitle": true,
+                 "showProcess": true,
+                 "showRAMTitle": true,
+                 "showNetworkIP": true,
+                 "showGpuName": true,
+                 "showNetworkDownloadSpeed": true,
+                 "showCpuUsage": true,
+                 "showGpuUsage": true,
+                 "showTime": true,
+                 "showRamTotal": true,
+                 "showWeatherTemp": true,
+                 "showRamInUse": true,
+                 "showNetworkDownloadTotal": true,
+                 "showNetworkUploadSpeed": true,
+                 "showWeatherTitle": true,
+                 "showCPUTitle": true,
+                 "showCpuName": true,
+                 "showWeather": true,
+                 "showSsdTotal": true,
+                 "showSsdFree": true,
+                 "showNetworkUploadTotal": true,
+                 "showCpuTemp": true,
+                 "showRamFree": true,
+                 "showWeatherCity": true,
+                 "showProcessTitle": true
+             }
+        
             }""";
 
     private static File getSettingsFile() {
         String jarDir = new File(SettingsLogger.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent();
         File dir = new File(jarDir, "config");
-
         if (!dir.exists()) {
             dir.mkdirs();
         }
-        File settingsFile = new File(dir, SETTINGS_FILE);
-        System.out.println("File settings được lưu tại: " + settingsFile.getAbsolutePath());
-        return settingsFile;
+        return new File(dir, SETTINGS_FILE);
     }
 
     public static void saveSettings(String fontType1, int fontSize1, Color fontColor1, String fontType2, int fontSize2, Color fontColor2, Double opacity, Color bgColor) {

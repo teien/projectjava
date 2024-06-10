@@ -3,8 +3,10 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.lang.reflect.Array;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -19,7 +21,9 @@ import com.sun.jna.platform.win32.WinUser;
 import org.json.JSONObject;
 import oshi.SystemInfo;
 import oshi.hardware.*;
+import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
+import oshi.util.FormatUtil;
 
 public class SystemMonitorUI extends JFrame {
 
@@ -54,7 +58,19 @@ public class SystemMonitorUI extends JFrame {
     private static JLabel SSDLabel;
     private static JLabel NETWORKLabel;
     private static JLabel PROCESSLabel;
-
+    private static JLabel[] processListLabel = new JLabel[5];
+    private static JLabel[] processListUpLabel = new JLabel[5];
+    static {
+        for (int i = 0; i < 5; i++) {
+            processListUpLabel[i] = new JLabel();
+        }
+    }
+    static {
+        for (int i = 0; i < 5; i++) {
+            processListLabel[i] = new JLabel();
+        }
+    }
+    JPanel processPanel = new JPanel(new GridLayout(0, 1));
     private static String fontType1;
     private static int fontSize1;
 
@@ -172,6 +188,10 @@ public class SystemMonitorUI extends JFrame {
         cpuTemperatureLabel = createLabel(" CPU Temperature: 0°C", 14);
         cpuNameLabel = createLabel(" CPU: --", 16);
         processLabel = createLabel(" Process: --", 16);
+        processListLabel[0] = createsmLabel("", 14);
+        processListLabel[1] = createsmLabel("", 14);
+        processListLabel[2] = createsmLabel("", 14);
+        processListLabel[3] = createsmLabel("", 14);
 
         gpuNameLabel = createLabel(" GPU: --", 16);
         gpuTemperatureLabel = createLabel(" GPU Temperature: 0°C", 14);
@@ -219,19 +239,19 @@ public class SystemMonitorUI extends JFrame {
             if (settings.getJSONObject("Show/Hide").getBoolean("showCpuTemp")) {
                 panel.add(cpuTemperatureLabel);
             }
-
-           /* panel.add(CPULabel);
-            panel.add(cpuNameLabel);
-            panel.add(cpuUsageLabel);
-            panel.add(cpuTemperatureLabel);*/
         }
         if (showProcess) {
            if (settings.getJSONObject("Show/Hide").getBoolean("showProcessTitle")) {
                panel.add(PROCESSLabel);
+
            }
            if (settings.getJSONObject("Show/Hide").getBoolean("showProcess")) {
                panel.add(processLabel);
            }
+           panel.add(processListLabel[0]);
+           panel.add(processListLabel[1]);
+           panel.add(processListLabel[2]);
+           panel.add(processListLabel[3]);
         }
 
 
@@ -299,48 +319,6 @@ public class SystemMonitorUI extends JFrame {
                 panel.add(networkUploadTotalLabel);
             }
         }
-
-        /*
-        if (showProcess) {
-            panel.add(PROCESSLabel);
-            panel.add(processLabel);}
-
-            if (showWeather) {
-            panel.add(weatherLabel);
-            panel.add(SYSTEMLabel);
-        }
-
-        panel.add(kernelLabel);
-        panel.add(uptimeLabel);
-        if (showGpu) {
-            panel.add(GPULabel);
-            panel.add(gpuNameLabel);
-            panel.add(gpuTemperatureLabel);
-            panel.add(gpuUsageLabel);
-        }
-
-        if (showRam) {
-            panel.add(RAMLabel);
-            panel.add(ramTotalLabel);
-            panel.add(ramInUseLabel);
-            panel.add(ramFreeLabel);
-        }
-
-        if (showSsd) {
-            panel.add(SSDLabel);
-            panel.add(ssdTotalLabel);
-            panel.add(ssdFreeLabel);
-            panel.add(ssdUsedLabel);
-        }
-
-        if (showNetwork) {
-            panel.add(NETWORKLabel);
-            panel.add(networkIPLabel);
-            panel.add(networkDownloadSpeedLabel);
-            panel.add(networkUploadSpeedLabel);
-            panel.add(networkDownloadTotalLabel);
-            panel.add(networkUploadTotalLabel);
-        }*/
         add(panel);
 
     }
@@ -353,8 +331,6 @@ public class SystemMonitorUI extends JFrame {
             panel.setBackground(colorWithAlpha);
         }
     }
-
-
 
     private static WinDef.HWND getHWnd(Component w) {
         WinDef.HWND hwnd = new WinDef.HWND();
@@ -419,14 +395,31 @@ public class SystemMonitorUI extends JFrame {
         label.setForeground(new Color(fontColor1));
         return label;
     }
+    private  JLabel createsmLabel(String text, int fontSize1) {
+        JLabel label = new JLabel(text);
+        JSONObject settings = SettingsLogger.loadSettings();
+        fontType1 = settings.getJSONObject("Style").getString("fontType1");
+        fontSize1 = settings.getJSONObject("Style").getInt("fontSize1") - 3;
+        fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
+        label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
+        label.setForeground(new Color(fontColor1));
+        return label;
+    }
     void updateSetting(){
         setFontUpdate(processLabel ,timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
-        setFontColorUpdate(processLabel,timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
+        setFontColorUpdate(processListLabel[0],processListLabel[1],processListLabel[2],processListLabel[3],processLabel,timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
         setFontUpdateTitle(PROCESSLabel,SYSTEMLabel,CPULabel,GPULabel,RAMLabel,SSDLabel,NETWORKLabel);
         setOpacityUpdate();
         setBackgroundColorUpdate();
+        setFontSmUpdate(processListLabel[0],processListLabel[1],processListLabel[2],processListLabel[3]);
     }
-
+    void setFontSmUpdate(JLabel... labels){
+        JSONObject settings = SettingsLogger.loadSettings();
+        int sm = settings.getJSONObject("Style").getInt("fontSize1") -4;
+        for (JLabel label : labels) {
+            label.setFont(new Font(fontType1, Font.PLAIN, sm));
+        }
+    }
     void setOpacityUpdate(){
         JSONObject settings = SettingsLogger.loadSettings();
         if (!settings.isEmpty()) {
@@ -552,6 +545,18 @@ public class SystemMonitorUI extends JFrame {
                 networkUploadTotalLabel.setText(String.format(" Upload Total: %.2f MiB", uploadBytes / 1e6));
             }
             }
+            if (showProcess) {
+                processLabel.setText(" Name   " + "   CPU " + "%    Memory ");
+                printProcesses();
+                processListLabel[0].setText(processListUpLabel[0].getText());
+                processListLabel[1].setText(processListUpLabel[1].getText());
+                processListLabel[2].setText(processListUpLabel[2].getText());
+                processListLabel[3].setText(processListUpLabel[3].getText());
+
+
+
+
+            }
             if (SettingsPanel.checkSettings) {
                 updateSetting();
                 SettingsPanel.checkSettings = Boolean.FALSE;
@@ -561,6 +566,35 @@ public class SystemMonitorUI extends JFrame {
             e.printStackTrace();
         }
     }
+    public void printProcesses() {
+        List<OSProcess> processes = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 5);
+        int i = 0; // Chỉ số mảng nên bắt đầu từ 0
+
+        for (OSProcess process : processes) {
+            if (process.getProcessID() == 0 || "Idle".equals(process.getName())) {
+                continue;
+            }
+
+            String processName = process.getName();
+            if (processName == null || processName.isEmpty()) {
+                processName = "Unknown";
+            }
+            processListUpLabel[i] = new JLabel();
+            processListUpLabel[i].setText(String.format(
+                    " %-10s %7.1f%%      %10s",
+                    processName,
+                    100d * process.getProcessCpuLoadCumulative(),
+                    FormatUtil.formatBytes(process.getResidentSetSize())
+            ));
+            i++;
+        }
+        for (JLabel label : processListUpLabel) {
+            if (label != null) {
+                processPanel.add(label);
+            }
+        }
+    }
+
 
     private boolean updateWeatherInfo() {
         try {

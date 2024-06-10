@@ -1,8 +1,6 @@
 import org.json.JSONObject;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
 
 public class SettingsPanel extends JPanel {
@@ -48,14 +46,14 @@ public class SettingsPanel extends JPanel {
         contentPanel.add(new JLabel("Font Size 1:"), gbc);
 
         gbc.gridx = 1;
-        fontSizeSpinner1 = new JSpinner(new SpinnerNumberModel(14, 10, 50, 1));
+        fontSizeSpinner1 = new JSpinner(new SpinnerNumberModel(14, 4, 50, 1));
         contentPanel.add(fontSizeSpinner1, gbc);
 
         gbc.gridx = 2;
         contentPanel.add(new JLabel("Font Size 2:"), gbc);
 
         gbc.gridx = 3;
-        fontSizeSpinner2 = new JSpinner(new SpinnerNumberModel(14, 10, 50, 1));
+        fontSizeSpinner2 = new JSpinner(new SpinnerNumberModel(14, 8, 50, 1));
         contentPanel.add(fontSizeSpinner2, gbc);
 
         // Font Color
