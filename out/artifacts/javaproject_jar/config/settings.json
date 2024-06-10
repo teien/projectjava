@@ -8,15 +8,18 @@
         "showWeatherIcon": true,
         "showSsdUsed": true,
         "showGpuTemp": true,
+        "showUptime": true,
         "showTimeTitle": true,
         "showProcess": true,
         "showRAMTitle": true,
+        "showSYSTEMTitle": true,
         "showNetworkIP": true,
         "showGpuName": true,
         "showNetworkDownloadSpeed": true,
         "showCpuUsage": true,
         "showGpuUsage": true,
         "showTime": true,
+        "showKernel": true,
         "showRamTotal": true,
         "showWeatherTemp": true,
         "showRamInUse": true,
@@ -38,16 +41,16 @@
         "width": 250,
         "yc": 0,
         "xc": 250,
-        "height": 1080
+        "height": 900
     },
     "Style": {
-        "bgColor": 281857228,
-        "fontType1": "JetBrains Mono NL Light",
+        "bgColor": 203451456,
+        "fontType1": "JetBrains Mono NL Thin",
         "fontType2": "Bad Script",
         "fontSize1": 12,
         "fontColor2": -52480,
         "fontColor1": -1118482,
-        "fontSize2": 16,
+        "fontSize2": 15,
         "opacity": 1
     }
 }

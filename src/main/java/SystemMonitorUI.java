@@ -118,6 +118,7 @@ public class SystemMonitorUI extends JFrame {
         }
     };
 
+
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
         this.showCpu = showCpu;
         this.showRam = showRam;
@@ -201,6 +202,7 @@ public class SystemMonitorUI extends JFrame {
         ramTotalLabel = createLabel(" RAM Total: 0 GiB", 14);
         ramInUseLabel = createLabel(" In Use: 0 GiB", 14);
         ramFreeLabel = createLabel(" Free: 0 GiB", 14);
+
 
         ssdTotalLabel = createLabel(" SSD Total: 0 GiB", 14);
         ssdFreeLabel = createLabel(" Free: 0 GiB", 14);

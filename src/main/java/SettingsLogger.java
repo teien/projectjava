@@ -20,7 +20,7 @@ public class SettingsLogger {
                   "fontColor1": -1118482,
                   "fontSize2": 15,
                   "opacity": 1
-                   },
+              },
               "Screen":{
                  "xc": 0,
                  "yc": 0,
@@ -65,7 +65,6 @@ public class SettingsLogger {
                  "showProcessTitle": true,
                  "showSYSTEMTitle": true
              }
-        
             }""";
 
     private static File getSettingsFile() {
