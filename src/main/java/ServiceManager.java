@@ -9,7 +9,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 public class ServiceManager {
-    private static final String SENSOR_DATA_FILE_PATH = "C:\\sensorData.json";
+    static org.json.JSONObject settings = SettingsLogger.loadSettings();
+    private  static final String SENSOR_DATA_FILE_PATH = settings.getJSONObject("Paths").getString("sensorDataFilePath");
     private static final String SERVICE_NAME = "HardwareMonitorService";
     private static final String CPU_PACKAGE = "CPU Package";
     private static final String GPU_CORE = "GPU Core";
@@ -101,6 +102,7 @@ public class ServiceManager {
         } catch (IOException | ParseException e) {
             e.printStackTrace();
         }
+
         return null;
     }
 

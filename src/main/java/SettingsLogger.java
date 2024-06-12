@@ -64,7 +64,10 @@ public class SettingsLogger {
                  "showUptime": true,
                  "showProcessTitle": true,
                  "showSYSTEMTitle": true
-             }
+             },
+             "Paths": {
+                     "sensorDataFilePath" : "C:\\\\ProgramData\\\\sensorData.json"
+                  }
             }""";
 
     private static File getSettingsFile() {

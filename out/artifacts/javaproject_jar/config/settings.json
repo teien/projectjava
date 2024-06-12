@@ -45,12 +45,13 @@
     },
     "Style": {
         "bgColor": 203451456,
-        "fontType1": "JetBrains Mono NL Thin",
+        "fontType1": "JetBrains Mono",
         "fontType2": "Bad Script",
-        "fontSize1": 12,
+        "fontSize1": 14,
         "fontColor2": -52480,
         "fontColor1": -1118482,
         "fontSize2": 15,
         "opacity": 1
-    }
+    },
+    "Paths": {"sensorDataFilePath": "C:\\ProgramData\\sensorData.json"}
 }
