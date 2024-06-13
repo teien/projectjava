@@ -38,9 +38,9 @@
         "showProcessTitle": true
     },
     "Screen": {
-        "width": 250,
+        "width": 260,
         "yc": 0,
-        "xc": 250,
+        "xc": 260,
         "height": 900
     },
     "Style": {

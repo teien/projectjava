@@ -43,6 +43,7 @@ public class ProcessMonitor {
         int processId = process.getProcessID();
         String processName = process.getName();
         long currentTime = process.getKernelTime() + process.getUserTime();
+        //tạm dừng 1s dont use thread.sleep
         long currentUpTime = process.getUpTime();
 
         long previousTime = previousTimes.getOrDefault(processId, 0L);
@@ -54,18 +55,32 @@ public class ProcessMonitor {
             return;
         }
 
+        // Tính toán mức sử dụng CPU
         double cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
+
         previousTimes.put(processId, currentTime);
         previousUpTimes.put(processId, currentUpTime);
+
+        // Ước tính số nhân CPU mà tiến trình đang sử dụng
+        int usedCores = estimateUsedCores(cpuLoad);
+        // Điều chỉnh mức sử dụng CPU theo số nhân CPU sử dụng
+        cpuLoad /= usedCores;
 
         processName = formatProcessName(processName);
         updateLabel(labelIndex, processName, cpuLoad, process.getResidentSetSize());
     }
 
+    private int estimateUsedCores(double cpuLoad) {
+        int estimatedCores = (int) Math.ceil(cpuLoad / 100 * cpuNumber);
+        return Math.max(1, Math.min(cpuNumber, estimatedCores));
+    }
     private double calculateCpuLoad(long currentTime, long previousTime, long currentUpTime, long previousUpTime) {
         long timeDifference = currentTime - previousTime;
         long upTimeDifference = currentUpTime - previousUpTime;
-        return (100.0 * timeDifference / upTimeDifference) / cpuNumber;
+        if (upTimeDifference <= 0) {
+            return 0;
+        }
+        return (100d * timeDifference / (double) upTimeDifference);
     }
 
     private String formatProcessName(String processName) {

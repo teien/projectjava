@@ -85,6 +85,7 @@ public class SystemMonitorUI extends JFrame {
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateWeather = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService processExecutor = Executors.newSingleThreadScheduledExecutor();
     private static int fontColor1;
     private static int fontColor2;
     private static String fontType2;
@@ -121,6 +122,7 @@ public class SystemMonitorUI extends JFrame {
             weatherUpdateExecutor.shutdown();
             checkUpdateNet.shutdown();
             checkUpdateWeather.shutdown();
+            processExecutor.shutdown();
         }));
 
 
@@ -332,9 +334,11 @@ public class SystemMonitorUI extends JFrame {
     }
     private void initializeSystemInfo() {
         SystemInfo systemInfo = new SystemInfo();
+        CentralProcessor processor = systemInfo.getHardware().getProcessor();
+        //  cpuNumber = processor.getPhysicalProcessorCount() * processor.getPhysicalPackageCount();
+        cpuNumber = processor.getLogicalProcessorCount();
         hal = systemInfo.getHardware();
         os = systemInfo.getOperatingSystem();
-        cpuNumber = hal.getProcessor().getLogicalProcessorCount();
         List<NetworkIF> networkIFs = hal.getNetworkIFs();
         if (!networkIFs.isEmpty()) {
             for (NetworkIF networkIF : networkIFs) {
@@ -371,14 +375,16 @@ public class SystemMonitorUI extends JFrame {
         if (showWeather) {
             weatherUpdateExecutor.scheduleAtFixedRate(this::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
         }
-        systemInfoExecutor.scheduleAtFixedRate(() -> {
-            SwingUtilities.invokeLater(this::updateSystemInfo );
-
-
-        }, 0, 1, TimeUnit.SECONDS);
-        /*systemInfoExecutor.scheduleAtFixedRate(() -> {
+        systemInfoExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(this::updateSystemInfo ), 0, 1, TimeUnit.SECONDS);
+       /* systemInfoExecutor.scheduleAtFixedRate(() -> {
             SwingUtilities.invokeLater(this::printProcesses);
-        }, 0, 3/2, TimeUnit.SECONDS);*/
+        }, 0, 2, TimeUnit.SECONDS);*/
+        ProcessMonitor pm = new  ProcessMonitor( os,  previousTimes,  previousUpTimes,  cpuNumber, processListLabel);
+        processExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
+            if (showProcess) {
+                pm.printProcesses();
+            }
+        }), 0, 3/2, TimeUnit.SECONDS);
 
     }
 
@@ -421,7 +427,7 @@ public class SystemMonitorUI extends JFrame {
         JSONObject settings = SettingsLogger.loadSettings();
         if (!settings.isEmpty()) {
             double opacity = settings.getJSONObject("Style").getDouble("opacity");
-            this.setOpacity((float) opacity);  // Fixed here
+            this.setOpacity((float) opacity);
         }
     }
     static void setFontUpdate(JLabel... labels){
@@ -538,10 +544,12 @@ public class SystemMonitorUI extends JFrame {
                 networkUploadTotalLabel.setText(String.format(" Upload Total:  %.2f MiB", uploadBytes / 1e6));
             }
             }
-            ProcessMonitor pm = new  ProcessMonitor( os,  previousTimes,  previousUpTimes,  cpuNumber, processListLabel);
+
+
             if (showProcess) {
                 processLabel.setText(" Name   " + "   CPU " + "%    Memory ");
-                pm.printProcesses();
+
+
             }
             if (SettingsPanel.checkSettings) {
                 updateSetting();
@@ -552,35 +560,29 @@ public class SystemMonitorUI extends JFrame {
             e.printStackTrace();
         }
     }
-    /*public void printProcesses() {
+   /* public void printProcesses() {
         List<OSProcess> processes = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 5);
         int i = 0;
         for (OSProcess process : processes) {
             if (process.getProcessID() == 0 || "Idle".equals(process.getName())) {
                 continue;
             }
+
             int processId = process.getProcessID();
             String processName = process.getName();
-            long currentTime = process.getKernelTime() + process.getUserTime();
-            long currentUpTime = process.getUpTime();
-            long previousTime = previousTimes.getOrDefault(processId, 0L);
-            long previousUpTime = previousUpTimes.getOrDefault(processId, 0L);
 
-            if (previousTime == 0 || previousUpTime == 0) {
-                previousTimes.put(processId, currentTime);
-                previousUpTimes.put(processId, currentUpTime);
-                continue;
+            OSProcess oldProcess = previousProcesses.get(processId);
+            double cpuLoad = 0.0;
+
+            if (oldProcess != null) {
+                cpuLoad = process.getProcessCpuLoadBetweenTicks(oldProcess) * 100.0;
             }
 
-            long timeDifference = currentTime - previousTime;
-            long upTimeDifference = currentUpTime - previousUpTime;
-            double cpuLoad = (100.0 * timeDifference / upTimeDifference) / cpuNumber;
+            // Update the map with the current process info
+            previousProcesses.put(processId, process);
 
-            previousTimes.put(processId, currentTime);
-            previousUpTimes.put(processId, currentUpTime);
-
-            processName = processName.length() > 9 ? processName.substring(0, 6) + "..." : processName;
-            if (processName.isEmpty()) {
+            processName = (processName != null && processName.length() > 9) ? processName.substring(0, 6) + "..." : processName;
+            if (processName == null || processName.isEmpty()) {
                 processName = "Unknown";
             }
 
@@ -597,6 +599,7 @@ public class SystemMonitorUI extends JFrame {
             }
         }
     }*/
+
 
 
 
@@ -619,16 +622,12 @@ public class SystemMonitorUI extends JFrame {
                             });
                             return true;
                         } catch (Exception e) {
-                            SwingUtilities.invokeLater(() -> {
-                                weatherLabel.setText("Weather: --");
-                            });
+                            SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
                             return false;
                         }
                     })
                     .exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> {
-                            weatherLabel.setText("Weather: --");
-                        });
+                        SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
                         ex.printStackTrace();
                         return false;
                     });

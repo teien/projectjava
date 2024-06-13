@@ -1,1 +1,1 @@
-java -jar "D:\Java\javaproject\out\artifacts\javaproject_jar\javaproject.jar" 
+javaw -jar "D:\Java\javaproject\out\artifacts\javaproject_jar\javaproject.jar" 
