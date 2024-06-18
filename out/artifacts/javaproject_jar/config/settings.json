@@ -1,20 +1,20 @@
 {
-  "Style": {
-      "bgColor": 203451456,
-      "fontType1": "JetBrains Mono NL Thin",
-      "fontType2": "Bad Script",
-      "fontSize1": 12,
-      "fontColor2": -52480,
-      "fontColor1": -1118482,
-      "fontSize2": 15,
-      "opacity": 1
-  },
-  "Screen":{
-     "xc": 0,
-     "yc": 0,
-     "width": 260,
-     "height": 920
-  },
+  "Screen": {
+            "width": 260,
+            "yc": 0,
+            "xc": 260,
+            "height": 920
+        },
+        "Style": {
+            "bgColor": 365743308,
+            "fontType1": "JetBrains Mono Light",
+            "fontType2": "JetBrains Mono NL ExtraLight",
+            "fontSize1": 12,
+            "fontColor2": -13261,
+            "fontColor1": -1,
+            "fontSize2": 18,
+            "opacity": 1
+        },
   "Show/Hide": {
      "showSsdName": true,
      "showNETWORKTitle": true,
