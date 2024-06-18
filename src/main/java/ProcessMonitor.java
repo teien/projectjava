@@ -43,7 +43,6 @@ public class ProcessMonitor {
         int processId = process.getProcessID();
         String processName = process.getName();
         long currentTime = process.getKernelTime() + process.getUserTime();
-        //tạm dừng 1s dont use thread.sleep
         long currentUpTime = process.getUpTime();
 
         long previousTime = previousTimes.getOrDefault(processId, 0L);
@@ -55,15 +54,14 @@ public class ProcessMonitor {
             return;
         }
 
-        // Tính toán mức sử dụng CPU
         double cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
 
         previousTimes.put(processId, currentTime);
         previousUpTimes.put(processId, currentUpTime);
 
-        // Ước tính số nhân CPU mà tiến trình đang sử dụng
+
         int usedCores = estimateUsedCores(cpuLoad);
-        // Điều chỉnh mức sử dụng CPU theo số nhân CPU sử dụng
+
         cpuLoad /= usedCores;
 
         processName = formatProcessName(processName);
@@ -85,17 +83,31 @@ public class ProcessMonitor {
 
     private String formatProcessName(String processName) {
         if (processName.length() > 9) {
-            return processName.substring(0, 6) + "...";
+            return processName.substring(0, 9);
         }
-        return processName.isEmpty() ? "Unknown" : processName;
+        return processName;
     }
 
     private void updateLabel(int labelIndex, String processName, double cpuLoad, long residentSetSize) {
-        processListLabel[labelIndex].setText(String.format(
-                " %-9s  %4.1f%%    %4s",
-                processName,
-                cpuLoad,
-                FormatUtil.formatBytes(residentSetSize)
-        ));
+        String a ="\\".repeat(9-processName.length());
+
+        String processNamePadded = "&nbsp;" + processName + "&nbsp;".repeat(9 - processName.length());
+
+        String htmlText = "<html>"
+                + "<style>"
+                + "table { border-spacing: 0; }"
+                + "td { padding: 0; padding-right: 16px;}"
+                + "</style>"
+                + "<table>"
+                + "<tr>"
+                + "<td style='text-align: right;'>" + processNamePadded + "</td>"
+                + "<td style='text-align: center; padding-right: 30px;'>" + String.format("%.1f", cpuLoad) + "</td>"
+                + "<td style='text-align: left;'>" + FormatUtil.formatBytes(residentSetSize) + "</td>"
+                + "</tr>"
+                + "</table>"
+                + "</html>";
+
+
+        processListLabel[labelIndex].setText(String.format(htmlText));
     }
 }

@@ -24,8 +24,8 @@ public class SettingsLogger {
               "Screen":{
                  "xc": 0,
                  "yc": 0,
-                 "width": 250,
-                 "height": 900
+                 "width": 260,
+                 "height": 920
               },
               "Show/Hide": {
                  "showSsdName": true,
@@ -63,6 +63,8 @@ public class SettingsLogger {
                  "showKernel": true,
                  "showUptime": true,
                  "showProcessTitle": true,
+                 "showNetworkUploadMonitor": true,
+                 "showNetworkDownloadMonitor": true
                  "showSYSTEMTitle": true
              },
              "Paths": {

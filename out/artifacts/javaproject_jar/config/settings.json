@@ -45,11 +45,11 @@
     },
     "Style": {
         "bgColor": 203451456,
-        "fontType1": "JetBrains Mono",
+        "fontType1": "JetBrains Mono NL Thin",
         "fontType2": "Bad Script",
-        "fontSize1": 14,
-        "fontColor2": -52480,
-        "fontColor1": -1118482,
+        "fontSize1": 12,
+        "fontColor2": -16711936,
+        "fontColor1": -16711732,
         "fontSize2": 15,
         "opacity": 1
     },

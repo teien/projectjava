@@ -15,6 +15,7 @@ import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
 import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinUser;
+import org.jfree.data.xy.XYSeriesCollection;
 import org.json.JSONObject;
 import oshi.SystemInfo;
 import oshi.hardware.*;
@@ -44,7 +45,6 @@ public class SystemMonitorUI extends JFrame {
     private static JLabel networkDownloadTotalLabel;
     private static JLabel networkUploadTotalLabel;
     private static JLabel processLabel;
-    private static final Map<Integer, Long> previousUpTimes = new HashMap<>();
     private static JLabel gpuTemperatureLabel;
     private static JLabel gpuUsageLabel;
     private static JLabel gpuNameLabel;
@@ -54,23 +54,19 @@ public class SystemMonitorUI extends JFrame {
     private static JLabel RAMLabel;
     private static JLabel SSDLabel;
     private static JLabel NETWORKLabel;
-    private static JLabel PROCESSLabel;
+    private static JLabel PROCESSESLabel;
     static final JLabel[] processListLabel = new JLabel[5];
     static {
         for (int i = 0; i < 5; i++) {
             processListLabel[i] = new JLabel();
         }
     }
-
     private static String fontType1;
-
     private HardwareAbstractionLayer hal;
     private static OperatingSystem os;
     private NetworkIF networkIF;
     private long lastDownloadBytes;
     private long lastUploadBytes;
-
-
 
     private final boolean showCpu;
     private final boolean showRam;
@@ -81,6 +77,7 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showProcess;
 
     private static final Map<Integer, Long> previousTimes = new HashMap<>();
+    private static final Map<Integer, Long> previousUpTimes = new HashMap<>();
     private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
@@ -101,6 +98,8 @@ public class SystemMonitorUI extends JFrame {
         }
     };
     private int cpuNumber;
+    private NetworkMonitor downloadMonitor;
+    private NetworkMonitor uploadMonitor ;
 
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
@@ -112,11 +111,9 @@ public class SystemMonitorUI extends JFrame {
         this.showGpu = showGpu;
         this.showProcess = showProcess;
 
-
-        initializeUI();
         initializeSystemInfo();
+        initializeUI();
         startUpdateTimer();
-
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             systemInfoExecutor.shutdown();
             weatherUpdateExecutor.shutdown();
@@ -136,10 +133,8 @@ public class SystemMonitorUI extends JFrame {
         int w = settings.getJSONObject("Screen").getInt("width");
         int h = settings.getJSONObject("Screen").getInt("height");
         setMinimumSize(new Dimension(w, h));
-
         int xc = settings.getJSONObject("Screen").getInt("xc");
         int yc = settings.getJSONObject("Screen").getInt("yc");
-        setMinimumSize(new Dimension(250, 1000));
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         int x = screenSize.width -getWidth() + xc;
         setLocation(x, yc);
@@ -159,7 +154,9 @@ public class SystemMonitorUI extends JFrame {
         setOpacityUpdate();
 
         timeLabel = createLabel("HH:mm");
+        timeLabel.setName("timeLabel");
         dateLabel = createLabel("EEE, dd MMM yyyy");
+        dateLabel.setName("dateLabel");
         weatherLabel = createLabel("Weather: --");
         BufferedImage blankImage = new BufferedImage(50, 50, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = blankImage.createGraphics();
@@ -178,6 +175,7 @@ public class SystemMonitorUI extends JFrame {
         processListLabel[1] = createSmLabel();
         processListLabel[2] = createSmLabel();
         processListLabel[3] = createSmLabel();
+
 
         gpuNameLabel = createLabel(" GPU: --");
         gpuTemperatureLabel = createLabel(" GPU Temperature: 0°C");
@@ -203,7 +201,7 @@ public class SystemMonitorUI extends JFrame {
         RAMLabel = createSeparator("RAM");
         SSDLabel = createSeparator("STORAGE");
         NETWORKLabel = createSeparator("NETWORK");
-        PROCESSLabel = createSeparator("PROCESS");
+        PROCESSESLabel = createSeparator("PROCESSES");
 
         panel.add(timeLabel);
         panel.add(dateLabel);
@@ -237,7 +235,7 @@ public class SystemMonitorUI extends JFrame {
         }
         if (showProcess) {
            if (settings.getJSONObject("Show/Hide").getBoolean("showProcessTitle")) {
-               panel.add(PROCESSLabel);
+               panel.add(PROCESSESLabel);
 
            }
            if (settings.getJSONObject("Show/Hide").getBoolean("showProcess")) {
@@ -258,12 +256,13 @@ public class SystemMonitorUI extends JFrame {
             if (settings.getJSONObject("Show/Hide").getBoolean("showGpuName")) {
                 panel.add(gpuNameLabel);
             }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showGpuTemp")) {
-                panel.add(gpuTemperatureLabel);
-            }
             if (settings.getJSONObject("Show/Hide").getBoolean("showGpuUsage")) {
                 panel.add(gpuUsageLabel);
             }
+            if (settings.getJSONObject("Show/Hide").getBoolean("showGpuTemp")) {
+                panel.add(gpuTemperatureLabel);
+            }
+
 
         }
         if (showRam) {
@@ -294,6 +293,8 @@ public class SystemMonitorUI extends JFrame {
                 panel.add(ssdUsedLabel);
             }
         }
+         downloadMonitor = new NetworkMonitor(networkIF, true);
+         uploadMonitor = new NetworkMonitor(networkIF, false);
         if (showNetwork) {
             if (settings.getJSONObject("Show/Hide").getBoolean("showNETWORKTitle")) {
                 panel.add(NETWORKLabel);
@@ -304,17 +305,28 @@ public class SystemMonitorUI extends JFrame {
             if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkDownloadSpeed")) {
                 panel.add(networkDownloadSpeedLabel);
             }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadSpeed")) {
-                panel.add(networkUploadSpeedLabel);
-            }
             if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkDownloadTotal")) {
                 panel.add(networkDownloadTotalLabel);
             }
+            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkDownloadMonitor")) {
+                panel.add(downloadMonitor);
+            }
+
+            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadSpeed")) {
+                panel.add(networkUploadSpeedLabel);
+            }
+
             if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadTotal")) {
                 panel.add(networkUploadTotalLabel);
             }
+            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadMonitor")) {
+                panel.add(uploadMonitor);
+            }
+
+
         }
-        add(panel);
+        getContentPane().add(panel);
+
 
     }
 
@@ -348,6 +360,8 @@ public class SystemMonitorUI extends JFrame {
                 }
             }
         }
+
+
     }
 
     private void startUpdateTimer() {
@@ -376,9 +390,6 @@ public class SystemMonitorUI extends JFrame {
             weatherUpdateExecutor.scheduleAtFixedRate(this::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
         }
         systemInfoExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(this::updateSystemInfo ), 0, 1, TimeUnit.SECONDS);
-       /* systemInfoExecutor.scheduleAtFixedRate(() -> {
-            SwingUtilities.invokeLater(this::printProcesses);
-        }, 0, 2, TimeUnit.SECONDS);*/
         ProcessMonitor pm = new  ProcessMonitor( os,  previousTimes,  previousUpTimes,  cpuNumber, processListLabel);
         processExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
             if (showProcess) {
@@ -394,33 +405,37 @@ public class SystemMonitorUI extends JFrame {
         fontType1 = settings.getJSONObject("Style").getString("fontType1");
         int fontSize1 = settings.getJSONObject("Style").getInt("fontSize1");
         fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
-        label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
+        if (Objects.equals(label.getText(), "HH:mm") || Objects.equals(label.getText(), "EEE, dd MMM yyyy") ){
+            label.setFont(new Font(fontType1, Font.PLAIN, 21));
+        }else {
+            label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
+        }
         label.setForeground(new Color(fontColor1));
         return label;
     }
     private  JLabel createSmLabel() {
-        JLabel label = new JLabel("");
+        JLabel label = new JLabel("    --");
         JSONObject settings = SettingsLogger.loadSettings();
         fontType1 = settings.getJSONObject("Style").getString("fontType1");
-        int fontSize1 = settings.getJSONObject("Style").getInt("fontSize1") - 3;
+        int fontSize1 = settings.getJSONObject("Style").getInt("fontSize1") - 1;
         fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
         label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
         label.setForeground(new Color(fontColor1));
         return label;
     }
     void updateSetting(){
-        setFontUpdate(processLabel ,timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
-        setFontColorUpdate(processListLabel[0],processListLabel[1],processListLabel[2],processListLabel[3],processLabel,timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
-        setFontUpdateTitle(PROCESSLabel,SYSTEMLabel,CPULabel,GPULabel,RAMLabel,SSDLabel,NETWORKLabel);
+        setFontUpdate(processLabel, timeLabel,dateLabel,weatherLabel,kernelLabel,uptimeLabel,cpuUsageLabel,cpuTemperatureLabel,cpuNameLabel,ramTotalLabel,ramInUseLabel,ramFreeLabel,ssdTotalLabel,ssdFreeLabel,ssdUsedLabel,networkIPLabel,networkDownloadSpeedLabel,networkUploadSpeedLabel,networkDownloadTotalLabel,networkUploadTotalLabel,gpuTemperatureLabel,gpuUsageLabel,gpuNameLabel);
+        setFontUpdateTitle(PROCESSESLabel,SYSTEMLabel,CPULabel,GPULabel,RAMLabel,SSDLabel,NETWORKLabel);
         setOpacityUpdate();
         setBackgroundColorUpdate();
         setFontSmUpdate(processListLabel[0],processListLabel[1],processListLabel[2],processListLabel[3]);
     }
     void setFontSmUpdate(JLabel... labels){
         JSONObject settings = SettingsLogger.loadSettings();
-        int sm = settings.getJSONObject("Style").getInt("fontSize1") -3;
+        int sm = settings.getJSONObject("Style").getInt("fontSize1") -1;
         for (JLabel label : labels) {
             label.setFont(new Font(fontType1, Font.PLAIN, sm));
+            label.setForeground(new Color(fontColor1));
         }
     }
     void setOpacityUpdate(){
@@ -437,6 +452,11 @@ public class SystemMonitorUI extends JFrame {
             fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
         for (JLabel label : labels) {
             label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
+            label.setForeground(new Color(fontColor1));
+            if (Objects.equals(label.getName(),"timeLabel") || Objects.equals(label.getName(),"dateLabel")){
+                label.setFont(new Font(fontType1, Font.PLAIN, 21));
+                label.setForeground(new Color(fontColor1));
+            }
         }
     }
     static void setFontUpdateTitle(JLabel... labels){
@@ -456,14 +476,6 @@ public class SystemMonitorUI extends JFrame {
         String htmlText = label.getText();
         return htmlText.replaceAll("<[^>]*>", "");
     }
-    static void setFontColorUpdate(JLabel... labels){
-        JSONObject settings = SettingsLogger.loadSettings();
-        fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
-        for (JLabel label : labels) {
-            label.setForeground(new Color(fontColor1));
-        }
-    }
-
     private JLabel createSeparator(String text) {
         JSONObject settings = SettingsLogger.loadSettings();
             fontType2 = settings.getJSONObject("Style").getString("fontType2");
@@ -495,16 +507,17 @@ public class SystemMonitorUI extends JFrame {
             ServiceManager.HwInfo hwInfo = ServiceManager.HwInfo.getHwInfo();
             if (showCpu) {
                 Double cpuLoad = hwInfo.cpuUsage();
-                cpuUsageLabel.setText(String.format(" CPU Usage: %.1f%%", cpuLoad));
+                cpuUsageLabel.setText(String.format(" CPU Usage: %15.1f%%", cpuLoad));
                 Double cpuTemperature = hwInfo.cpuTemperature();
-                cpuTemperatureLabel.setText(String.format(" CPU Temperature: %.1f°C", cpuTemperature));
+                cpuTemperatureLabel.setText(String.format(" CPU Temperature: %9.1f°C", cpuTemperature));
                 cpuNameLabel.setText(" "+hwInfo.cpuName()) ;
+
             }
             if (showGpu) {
                 Double gpuTemperature = hwInfo.gpuTemperature();
                 Double gpuUsage = hwInfo.gpuUsage();
-                gpuTemperatureLabel.setText(" GPU Temperature: " + String.format("%.1f°C", gpuTemperature));
-                gpuUsageLabel.setText(String.format(" GPU Usage: %.1f%%", gpuUsage));
+                gpuTemperatureLabel.setText(" GPU Temperature: " + String.format("%9.1f°C", gpuTemperature));
+                gpuUsageLabel.setText(String.format(" GPU Usage: %15.1f%%", gpuUsage));
                 gpuNameLabel.setText(" "+hwInfo.gpuName());
             }
 
@@ -513,9 +526,10 @@ public class SystemMonitorUI extends JFrame {
                 long totalMemory = memory.getTotal();
                 long availableMemory = memory.getAvailable();
                 long usedMemory = totalMemory - availableMemory;
-                ramTotalLabel.setText(String.format(" RAM Total:  %.2f GiB", totalMemory / 1e9));
-                ramInUseLabel.setText(String.format(" In Use:  %.2f GiB", usedMemory / 1e9) +"  ("+String.format("%.1f%%", (double) usedMemory / totalMemory * 100)+")");
-                ramFreeLabel.setText(String.format(" Free:  %.2f GiB", availableMemory / 1e9) +"  ("+String.format("%.1f%%", (double) availableMemory / totalMemory * 100)+")");
+                ramTotalLabel.setText(String.format(" RAM Total:  %12.2f GiB", totalMemory / 1e9));
+                ramInUseLabel.setText(String.format(" In Use:  %6.1f%%", (double) usedMemory / totalMemory * 100) +   String.format("%8.2f GiB", usedMemory / 1e9) );
+                ramFreeLabel.setText(String.format(" Free:  %8.1f%%", (double) availableMemory / totalMemory * 100) +  String.format("%8.2f GiB", availableMemory / 1e9) );
+
             }
 
             if (showSsd && !hal.getDiskStores().isEmpty()) {
@@ -523,31 +537,47 @@ public class SystemMonitorUI extends JFrame {
                 long totalDisk = diskPartition.getTotalSpace();
                 long usableDisk = diskPartition.getFreeSpace();
                 long usedDisk = totalDisk - usableDisk;
-                ssdTotalLabel.setText(String.format(" SSD Total:  %.2f GiB", totalDisk / 1e9));
-                ssdFreeLabel.setText(String.format(" Free:  %.2f GiB", usableDisk / 1e9));
-                ssdUsedLabel.setText(String.format(" Used:  %.2f GiB", usedDisk / 1e9));
+                ssdTotalLabel.setText(String.format(" SSD Total:  %12.2f GiB", totalDisk / 1e9));
+                ssdFreeLabel.setText(String.format(" Free:  %17.2f GiB", usableDisk / 1e9));
+                ssdUsedLabel.setText(String.format(" Used:  %17.2f GiB", usedDisk / 1e9));
             }
 
             if (showNetwork){
             if (networkIF != null) {
-                networkIF.updateAttributes();
+               networkIF.updateAttributes();
                 long downloadBytes = networkIF.getBytesRecv();
                 long uploadBytes = networkIF.getBytesSent();
                 double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024;
                 double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024;
                 lastDownloadBytes = downloadBytes;
                 lastUploadBytes = uploadBytes;
-                networkIPLabel.setText(" IP: " + networkIF.getIPv4addr()[0]);
-                networkDownloadSpeedLabel.setText(String.format(" Download Speed:  %.1f Mbps", downloadSpeedMbps));
-                networkUploadSpeedLabel.setText(String.format(" Upload Speed:  %.1f Mbps", uploadSpeedMbps));
-                networkDownloadTotalLabel.setText(String.format(" Download Total:  %.2f MiB", downloadBytes / 1e6));
-                networkUploadTotalLabel.setText(String.format(" Upload Total:  %.2f MiB", uploadBytes / 1e6));
-            }
+                networkIPLabel.setText(" IP:             " + networkIF.getIPv4addr()[0]);
+                networkDownloadSpeedLabel.setText(String.format(" Download Speed:  %6.2f Mbps", downloadSpeedMbps));
+                networkUploadSpeedLabel.setText(String.format(" Upload Speed:  %8.2f Mbps", uploadSpeedMbps));
+                networkDownloadTotalLabel.setText(String.format(" Download Total:  %7.2f GiB", downloadBytes / 1e9));
+                networkUploadTotalLabel.setText(String.format(" Upload Total:  %9.2f GiB", uploadBytes / 1e9));
+                downloadMonitor.startDownload();
+                uploadMonitor.startUpload();
+                }
             }
 
 
             if (showProcess) {
-                processLabel.setText(" Name   " + "   CPU " + "%    Memory ");
+                String htmlText = "<html>"
+                        + "<style>"
+                        + "table { border-spacing: 0; }"
+                        + "td { padding: 0; }"
+                        + "</style>"
+                        + "<table>"
+                        + "<tr>"
+                        + "<td style='padding-right: 30px;'>&nbsp;Name</td>"
+                        + "<td style='padding-right: 26px;'>CPU (%)</td>"
+                        + "<td>Memory</td>"
+                        + "</tr>"
+                        + "</table>"
+                        + "</html>";
+                processLabel.setText(htmlText);
+
 
 
             }
@@ -560,57 +590,13 @@ public class SystemMonitorUI extends JFrame {
             e.printStackTrace();
         }
     }
-   /* public void printProcesses() {
-        List<OSProcess> processes = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 5);
-        int i = 0;
-        for (OSProcess process : processes) {
-            if (process.getProcessID() == 0 || "Idle".equals(process.getName())) {
-                continue;
-            }
-
-            int processId = process.getProcessID();
-            String processName = process.getName();
-
-            OSProcess oldProcess = previousProcesses.get(processId);
-            double cpuLoad = 0.0;
-
-            if (oldProcess != null) {
-                cpuLoad = process.getProcessCpuLoadBetweenTicks(oldProcess) * 100.0;
-            }
-
-            // Update the map with the current process info
-            previousProcesses.put(processId, process);
-
-            processName = (processName != null && processName.length() > 9) ? processName.substring(0, 6) + "..." : processName;
-            if (processName == null || processName.isEmpty()) {
-                processName = "Unknown";
-            }
-
-            processListLabel[i].setText(String.format(
-                    " %-9s  %4.1f%%    %4s",
-                    processName,
-                    cpuLoad,
-                    FormatUtil.formatBytes(process.getResidentSetSize())
-            ));
-
-            i++;
-            if (i >= processListLabel.length) {
-                break;
-            }
-        }
-    }*/
-
-
-
 
     private boolean updateWeatherInfo() {
         try {
             CompletableFuture<Boolean> future = WeatherByIP.getWeatherInfo()
                     .thenApply(weatherInfo -> {
                         if (weatherInfo == null) {
-                            SwingUtilities.invokeLater(() -> {
-                                weatherLabel.setText("Weather: --");
-                            });
+                            SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
                             return false;
                         }
                         try {
