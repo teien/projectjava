@@ -21,8 +21,6 @@ import oshi.SystemInfo;
 import oshi.hardware.*;
 import oshi.software.os.OperatingSystem;
 
-
-
 public class SystemMonitorUI extends JFrame {
 
     private static JLabel timeLabel;
@@ -132,7 +130,7 @@ public class SystemMonitorUI extends JFrame {
         setMaximumSize(new Dimension(1000, getMaximumSize().height));
         int w = settings.getJSONObject("Screen").getInt("width");
         int h = settings.getJSONObject("Screen").getInt("height");
-        setMinimumSize(new Dimension(w, h));
+        setSize(new Dimension(w, h));
         int xc = settings.getJSONObject("Screen").getInt("xc");
         int yc = settings.getJSONObject("Screen").getInt("yc");
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -294,7 +292,9 @@ public class SystemMonitorUI extends JFrame {
             }
         }
          downloadMonitor = new NetworkMonitor(networkIF, true);
+        downloadMonitor.setBorder(new EmptyBorder(0, -10, 0, 4));
          uploadMonitor = new NetworkMonitor(networkIF, false);
+        uploadMonitor.setBorder(new EmptyBorder(0, -10, 0, 4));
         if (showNetwork) {
             if (settings.getJSONObject("Show/Hide").getBoolean("showNETWORKTitle")) {
                 panel.add(NETWORKLabel);
@@ -321,6 +321,7 @@ public class SystemMonitorUI extends JFrame {
             }
             if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadMonitor")) {
                 panel.add(uploadMonitor);
+
             }
 
 
@@ -360,8 +361,6 @@ public class SystemMonitorUI extends JFrame {
                 }
             }
         }
-
-
     }
 
     private void startUpdateTimer() {
@@ -371,7 +370,6 @@ public class SystemMonitorUI extends JFrame {
                 SwingUtilities.invokeLater(this::initializeSystemInfo);
                 if (!networkIPLabel.getText().equals(" IP: --")) {
                     checkUpdateNet.shutdown();
-
                 }
             }, 20, 10, TimeUnit.SECONDS);
         }
@@ -429,6 +427,18 @@ public class SystemMonitorUI extends JFrame {
         setOpacityUpdate();
         setBackgroundColorUpdate();
         setFontSmUpdate(processListLabel[0],processListLabel[1],processListLabel[2],processListLabel[3]);
+        updateLocationScreen();
+    }
+    void updateLocationScreen(){
+        JSONObject settings = SettingsLogger.loadSettings();
+        int w = settings.getJSONObject("Screen").getInt("width");
+        int h = settings.getJSONObject("Screen").getInt("height");
+        int xc = settings.getJSONObject("Screen").getInt("xc");
+        int yc = settings.getJSONObject("Screen").getInt("yc");
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int x = screenSize.width -w + xc;
+        setLocation(x, yc);
+        setSize(new Dimension(w, h));
     }
     void setFontSmUpdate(JLabel... labels){
         JSONObject settings = SettingsLogger.loadSettings();
@@ -552,8 +562,20 @@ public class SystemMonitorUI extends JFrame {
                 lastDownloadBytes = downloadBytes;
                 lastUploadBytes = uploadBytes;
                 networkIPLabel.setText(" IP:             " + networkIF.getIPv4addr()[0]);
-                networkDownloadSpeedLabel.setText(String.format(" Download Speed:  %6.2f Mbps", downloadSpeedMbps));
-                networkUploadSpeedLabel.setText(String.format(" Upload Speed:  %8.2f Mbps", uploadSpeedMbps));
+
+                if (downloadSpeedMbps < 1){
+                    downloadSpeedMbps = downloadSpeedMbps * 1024;
+                    networkDownloadSpeedLabel.setText(String.format(" Download Speed:  %6.2f Kbps", downloadSpeedMbps));
+                } else
+                {
+                    networkDownloadSpeedLabel.setText(String.format(" Download Speed:  %6.2f Mbps", downloadSpeedMbps));
+                }
+                if (uploadSpeedMbps < 1){
+                    uploadSpeedMbps = uploadSpeedMbps * 1024;
+                    networkUploadSpeedLabel.setText(String.format(" Upload Speed:  %8.2f Kbps", uploadSpeedMbps));
+                } else {
+                    networkUploadSpeedLabel.setText(String.format(" Upload Speed:  %8.2f Mbps", uploadSpeedMbps));
+                }
                 networkDownloadTotalLabel.setText(String.format(" Download Total:  %7.2f GiB", downloadBytes / 1e9));
                 networkUploadTotalLabel.setText(String.format(" Upload Total:  %9.2f GiB", uploadBytes / 1e9));
                 downloadMonitor.startDownload();
@@ -568,8 +590,8 @@ public class SystemMonitorUI extends JFrame {
                         + "</style>"
                         + "<table>"
                         + "<tr>"
-                        + "<td style='padding-right: 30px;'>&nbsp;Name</td>"
-                        + "<td style='padding-right: 26px;'>CPU (%)</td>"
+                        + "<td style='padding-right: 27px;'>&nbsp;Name</td>"
+                        + "<td style='padding-right: 20px;'>CPU (%)</td>"
                         + "<td>Memory</td>"
                         + "</tr>"
                         + "</table>"

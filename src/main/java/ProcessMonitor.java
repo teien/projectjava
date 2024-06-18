@@ -89,20 +89,21 @@ public class ProcessMonitor {
     }
 
     private void updateLabel(int labelIndex, String processName, double cpuLoad, long residentSetSize) {
-        String a ="\\".repeat(9-processName.length());
-
         String processNamePadded = "&nbsp;" + processName + "&nbsp;".repeat(9 - processName.length());
+
+        String residentSetSizePadded = "&nbsp;".repeat(9 - FormatUtil.formatBytes(residentSetSize).length())+FormatUtil.formatBytes(residentSetSize);
+
 
         String htmlText = "<html>"
                 + "<style>"
                 + "table { border-spacing: 0; }"
-                + "td { padding: 0; padding-right: 16px;}"
+                + "td { padding: 0; padding-right: 14px;}"
                 + "</style>"
                 + "<table>"
                 + "<tr>"
                 + "<td style='text-align: right;'>" + processNamePadded + "</td>"
-                + "<td style='text-align: center; padding-right: 30px;'>" + String.format("%.1f", cpuLoad) + "</td>"
-                + "<td style='text-align: left;'>" + FormatUtil.formatBytes(residentSetSize) + "</td>"
+                + "<td style='text-align: center; padding-right: 21px;'>" + String.format("%.1f", cpuLoad) + "</td>"
+                + "<td style='text-align: left;'>" + residentSetSizePadded + "</td>"
                 + "</tr>"
                 + "</table>"
                 + "</html>";

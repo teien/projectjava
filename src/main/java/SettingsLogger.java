@@ -12,21 +12,21 @@ public class SettingsLogger {
     private static final String DEFAULT_SETTINGS = """
             {
               "Screen": {
-                        "width": 260,
-                        "yc": 0,
-                        "xc": 260,
-                        "height": 920
-                    },
-                    "Style": {
-                        "bgColor": 365743308,
-                        "fontType1": "JetBrains Mono Light",
-                        "fontType2": "JetBrains Mono NL ExtraLight",
-                        "fontSize1": 12,
-                        "fontColor2": -13261,
-                        "fontColor1": -1,
-                        "fontSize2": 18,
-                        "opacity": 1
-                    },
+                              "width": 245,
+                              "yc": 0,
+                              "xc": 0,
+                              "height": 900
+                          },
+                          "Style": {
+                              "bgColor": 1309486352,
+                              "fontType1": "JetBrains Mono Light",
+                              "fontType2": "JetBrains Mono NL ExtraLight",
+                              "fontSize1": 12,
+                              "fontColor2": -13261,
+                              "fontColor1": -1,
+                              "fontSize2": 16,
+                              "opacity": 1
+                          },
               "Show/Hide": {
                  "showSsdName": true,
                  "showNETWORKTitle": true,

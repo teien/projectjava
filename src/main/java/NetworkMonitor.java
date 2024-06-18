@@ -9,6 +9,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
+import org.json.JSONObject;
 import oshi.hardware.NetworkIF;
 import javax.swing.*;
 import java.awt.*;
@@ -30,6 +31,8 @@ public class NetworkMonitor extends JPanel {
     public NetworkMonitor(NetworkIF networkIF,Boolean isDownload) {
         NetworkMonitor.networkIF = networkIF;
         this.startTime = System.currentTimeMillis();
+        //
+
 
         // Create dataset
         XYSeriesCollection datasetDownload = new XYSeriesCollection();
@@ -87,10 +90,12 @@ public class NetworkMonitor extends JPanel {
 
         // Create Panel
         ChartPanel panel = new ChartPanel(chart);
-        panel.setPreferredSize(new Dimension(250, 60)); // Set preferred size for the chart panel
+        JSONObject settings = SettingsLogger.loadSettings();
+        int w = settings.getJSONObject("Screen").getInt("width");
+        panel.setPreferredSize(new Dimension(214, 60)); // Set preferred size for the chart panel
         panel.setBackground(new Color(0, 0, 0, 0)); // Set panel background to transparent
         panel.setOpaque(false); // Ensure panel is non-opaque
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
         add(panel);
         setBackground(new Color(0, 0, 0, 0)); // Set JPanel background to transparent
         setOpaque(false); // Ensure JPanel is non-opaque
