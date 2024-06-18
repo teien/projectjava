@@ -64,7 +64,7 @@ public class SettingsLogger {
                  "showUptime": true,
                  "showProcessTitle": true,
                  "showNetworkUploadMonitor": true,
-                 "showNetworkDownloadMonitor": true
+                 "showNetworkDownloadMonitor": true,
                  "showSYSTEMTitle": true
              },
              "Paths": {

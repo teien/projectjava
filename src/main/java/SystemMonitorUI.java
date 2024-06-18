@@ -560,8 +560,6 @@ public class SystemMonitorUI extends JFrame {
                 uploadMonitor.startUpload();
                 }
             }
-
-
             if (showProcess) {
                 String htmlText = "<html>"
                         + "<style>"

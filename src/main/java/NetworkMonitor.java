@@ -1,3 +1,4 @@
+import org.jetbrains.annotations.NotNull;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -6,17 +7,12 @@ import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
-import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import oshi.SystemInfo;
-import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+
 
 public class NetworkMonitor extends JPanel {
 
@@ -50,14 +46,10 @@ public class NetworkMonitor extends JPanel {
     }
 
     public void startDownload() {
-
         updateDownloadChart();
-
     }
     public void startUpload() {
-
         updateUploadChart();
-
     }
     public void createChart(XYSeriesCollection dataset, Color color, boolean isDownload) {
         JFreeChart chart = ChartFactory.createXYLineChart(
@@ -75,19 +67,8 @@ public class NetworkMonitor extends JPanel {
         chart.setBorderVisible(false);
         chart.setBackgroundPaint(new Color(0, 0, 0, 0)); // Set chart background to transparent
 
-        // Customize plot
-        XYPlot plot = chart.getXYPlot();
-        plot.setOutlinePaint(Color.WHITE);
-        plot.setBackgroundPaint(Color.WHITE);
-        XYAreaRenderer renderer = new XYAreaRenderer();
-        plot.setRenderer(renderer);
-        renderer.setSeriesPaint(0, color);
-        renderer.setSeriesFillPaint(0, new Color(color.getRed(), color.getGreen(), color.getBlue(), 100));
 
-        // Set plot background to transparent
-        plot.setBackgroundPaint(new Color(0, 0, 0, 0));
-        plot.setDomainGridlinePaint(new Color(0, 0, 0, 0));
-        plot.setRangeGridlinePaint(new Color(0, 0, 0, 0));
+        XYPlot plot = getXyPlot(color, chart);
 
         // Customize Y axis
         NumberAxis yAxis = (NumberAxis) plot.getRangeAxis();
@@ -109,7 +90,7 @@ public class NetworkMonitor extends JPanel {
         panel.setPreferredSize(new Dimension(250, 60)); // Set preferred size for the chart panel
         panel.setBackground(new Color(0, 0, 0, 0)); // Set panel background to transparent
         panel.setOpaque(false); // Ensure panel is non-opaque
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 10));
         add(panel);
         setBackground(new Color(0, 0, 0, 0)); // Set JPanel background to transparent
         setOpaque(false); // Ensure JPanel is non-opaque
@@ -127,6 +108,22 @@ public class NetworkMonitor extends JPanel {
                 lastUploadBytes = networkIF.getBytesSent();
             }
         }
+    }
+
+    private static @NotNull XYPlot getXyPlot(Color color, JFreeChart chart) {
+        XYPlot plot = chart.getXYPlot();
+        plot.setOutlinePaint(Color.WHITE);
+        plot.setBackgroundPaint(Color.WHITE);
+        XYAreaRenderer renderer = new XYAreaRenderer();
+        plot.setRenderer(renderer);
+        renderer.setSeriesPaint(0, color);
+        renderer.setSeriesFillPaint(0, new Color(color.getRed(), color.getGreen(), color.getBlue(), 100));
+
+        // Set plot background to transparent
+        plot.setBackgroundPaint(new Color(0, 0, 0, 0));
+        plot.setDomainGridlinePaint(new Color(0, 0, 0, 0));
+        plot.setRangeGridlinePaint(new Color(0, 0, 0, 0));
+        return plot;
     }
 
     private void updateDownloadChart() {
@@ -169,7 +166,7 @@ public class NetworkMonitor extends JPanel {
             if (firstUpdateUpload) {
                 firstUpdateUpload = false;
                 lastUploadBytes = uploadBytes;
-                return; // Skip the first update to avoid incorrect high value
+                return;
             }
 
             double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024;
