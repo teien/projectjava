@@ -10,12 +10,14 @@ import java.io.IOException;
 public class SettingsLogger {
     private static final String SETTINGS_FILE = "settings.json";
     private static final String DEFAULT_SETTINGS = """
+                    
             {
               "Screen": {
                               "width": 245,
                               "yc": 0,
                               "xc": 0,
-                              "height": 900
+                              "height": 900,
+                              "alwaysOnTop": false
                           },
                           "Style": {
                               "bgColor": 1309486352,
@@ -67,6 +69,7 @@ public class SettingsLogger {
                  "showNetworkDownloadMonitor": true,
                  "showSYSTEMTitle": true
              },
+             "diskName": "C:",
              "Paths": {
                      "sensorDataFilePath" : "C:\\\\ProgramData\\\\sensorData.json"
                   }
@@ -115,11 +118,14 @@ public class SettingsLogger {
                 e.printStackTrace();
             }
         }
+        JSONObject settings;
         try (FileReader reader = new FileReader(settingsFile)) {
-            return new JSONObject(new JSONTokener(reader));
+            settings = new JSONObject(new JSONTokener(reader));
         } catch (IOException e) {
             e.printStackTrace();
-            return new JSONObject(DEFAULT_SETTINGS);
+            settings = new JSONObject(DEFAULT_SETTINGS);
         }
+        return settings;
     }
+
 }

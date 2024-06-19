@@ -9,7 +9,6 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYAreaRenderer;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.json.JSONObject;
 import oshi.hardware.NetworkIF;
 import javax.swing.*;
 import java.awt.*;
@@ -20,7 +19,7 @@ public class NetworkMonitor extends JPanel {
     private final XYSeries downloadSeries;
     private long lastDownloadBytes;
     private static NetworkIF networkIF;
-    private final long startTime;
+    private long startTime;
     private boolean firstUpdateDownload = true;
     private boolean firstUpdateUpload = true;
     private XYPlot downloadPlot;
@@ -31,10 +30,7 @@ public class NetworkMonitor extends JPanel {
     public NetworkMonitor(NetworkIF networkIF,Boolean isDownload) {
         NetworkMonitor.networkIF = networkIF;
         this.startTime = System.currentTimeMillis();
-        //
-
-
-        // Create dataset
+        // Create dataset and chart
         XYSeriesCollection datasetDownload = new XYSeriesCollection();
         XYSeriesCollection datasetUpload = new XYSeriesCollection();
         downloadSeries = new XYSeries("Download Speed");
@@ -48,6 +44,21 @@ public class NetworkMonitor extends JPanel {
         }
     }
 
+    public static void setNetworkIF(NetworkIF networkIF) {
+        NetworkMonitor.networkIF = networkIF;
+    }
+    public static NetworkIF getNetworkIF() {
+        return networkIF;
+    }
+    public void resetChart() {
+        downloadSeries.clear();
+        uploadSeries.clear();
+        firstUpdateDownload = true;
+        firstUpdateUpload = true;
+        lastDownloadBytes = 0;
+        lastUploadBytes = 0;
+        startTime = System.currentTimeMillis();
+    }
     public void startDownload() {
         updateDownloadChart();
     }
@@ -90,8 +101,6 @@ public class NetworkMonitor extends JPanel {
 
         // Create Panel
         ChartPanel panel = new ChartPanel(chart);
-        JSONObject settings = SettingsLogger.loadSettings();
-        int w = settings.getJSONObject("Screen").getInt("width");
         panel.setPreferredSize(new Dimension(214, 60)); // Set preferred size for the chart panel
         panel.setBackground(new Color(0, 0, 0, 0)); // Set panel background to transparent
         panel.setOpaque(false); // Ensure panel is non-opaque
@@ -131,7 +140,7 @@ public class NetworkMonitor extends JPanel {
         return plot;
     }
 
-    private void updateDownloadChart() {
+    void updateDownloadChart() {
         if (networkIF != null) {
             networkIF.updateAttributes();
             long downloadBytes = networkIF.getBytesRecv();
@@ -163,7 +172,7 @@ public class NetworkMonitor extends JPanel {
         }
     }
 
-    private void updateUploadChart() {
+    void updateUploadChart() {
         if (networkIF != null) {
             networkIF.updateAttributes();
             long uploadBytes = networkIF.getBytesSent();
