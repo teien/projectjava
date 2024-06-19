@@ -9,87 +9,84 @@ import javax.swing.*;
 
 public class RemoteDesktopServer {
     private ServerSocket serverSocket;
-    private boolean isRunning = false;
-    private JButton startButton;
-    private JButton stopButton;
+    private boolean running = false;
+    private Thread serverThread;
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new RemoteDesktopServer().createAndShowGUI());
+        SwingUtilities.invokeLater(RemoteDesktopServer::new);
     }
 
-    private void createAndShowGUI() {
+    public RemoteDesktopServer() {
         JFrame frame = new JFrame("Remote Desktop Server");
-        frame.setSize(200, 105);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(300, 100);
         frame.setLayout(new FlowLayout());
-        frame.setResizable(false);
-        frame.setLocationRelativeTo(null);
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        startButton = new JButton("Start Server");
-        stopButton = new JButton("Stop Server");
-        stopButton.setEnabled(false);
+        JButton startButton = new JButton("Start");
+        JButton stopButton = new JButton("Stop");
 
         startButton.addActionListener(e -> startServer());
         stopButton.addActionListener(e -> stopServer());
 
         frame.add(startButton);
         frame.add(stopButton);
+
         frame.setVisible(true);
     }
 
     private void startServer() {
-        if (!isRunning) {
-            isRunning = true;
-            startButton.setEnabled(false);
-            stopButton.setEnabled(true);
+        if (running) {
+            return;
+        }
+        running = true;
 
-            new Thread(() -> {
-                try {
-                    serverSocket = new ServerSocket(12345);
-                    System.out.println("Server đang chờ kết nối...");
+        serverThread = new Thread(() -> {
+            try {
+                serverSocket = new ServerSocket(12345);
+                System.out.println("Server đang chờ kết nối...");
 
-                    while (isRunning) {
-                        try {
-                            Socket socket = serverSocket.accept();
-                            System.out.println("Client đã kết nối");
-                            new ClientHandler(socket).start();
-                        } catch (IOException e) {
-                            if (isRunning) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }
-                } catch (IOException e) {
+                while (running) {
+                    Socket controlSocket = serverSocket.accept();
+                    System.out.println("Client đã kết nối cho điều khiển");
+
+                    Socket imageSocket = serverSocket.accept();
+                    System.out.println("Client đã kết nối cho hình ảnh");
+
+                    new ClientHandler(controlSocket, imageSocket).start();
+                }
+            } catch (IOException e) {
+                if (running) {
                     e.printStackTrace();
                 }
-            }).start();
-        }
+            }
+        });
+        serverThread.start();
     }
 
     private void stopServer() {
-        if (isRunning) {
-            isRunning = false;
-            startButton.setEnabled(true);
-            stopButton.setEnabled(false);
-
+        running = false;
+        if (serverSocket != null && !serverSocket.isClosed()) {
             try {
-                if (serverSocket != null) {
-                    serverSocket.close();
-                }
+                serverSocket.close();
                 System.out.println("Server đã dừng");
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        if (serverThread != null) {
+            serverThread.interrupt();
+        }
     }
 
     class ClientHandler extends Thread {
-        private final Socket socket;
+        private Socket controlSocket;
+        private Socket imageSocket;
         private Robot robot;
         private Rectangle screenRect;
 
-        public ClientHandler(Socket socket) {
-            this.socket = socket;
+        public ClientHandler(Socket controlSocket, Socket imageSocket) {
+            this.controlSocket = controlSocket;
+            this.imageSocket = imageSocket;
             try {
                 robot = new Robot();
                 Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -101,22 +98,22 @@ public class RemoteDesktopServer {
 
         @Override
         public void run() {
-            try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-                 DataInputStream dis = new DataInputStream(socket.getInputStream())) {
+            try (DataOutputStream imageDos = new DataOutputStream(imageSocket.getOutputStream());
+                 DataInputStream controlDis = new DataInputStream(controlSocket.getInputStream())) {
 
                 // Thread để gửi ảnh màn hình
                 new Thread(() -> {
                     try {
-                        while (isRunning && !socket.isClosed()) {
+                        while (!imageSocket.isClosed()) {
                             BufferedImage screenCapture = robot.createScreenCapture(screenRect);
                             ByteArrayOutputStream baos = new ByteArrayOutputStream();
                             ImageIO.write(screenCapture, "jpg", baos);
                             byte[] imageBytes = baos.toByteArray();
 
-                            dos.writeUTF("IMG");
-                            dos.writeInt(imageBytes.length);
-                            dos.write(imageBytes);
-                            dos.flush();
+                            imageDos.writeUTF("IMG");
+                            imageDos.writeInt(imageBytes.length);
+                            imageDos.write(imageBytes);
+                            imageDos.flush();
 
                             Thread.sleep(100); // Đợi 100ms trước khi chụp lại màn hình
                         }
@@ -126,21 +123,19 @@ public class RemoteDesktopServer {
                 }).start();
 
                 // Xử lý lệnh điều khiển từ client
-                while (isRunning && !socket.isClosed()) {
+                while (!controlSocket.isClosed()) {
                     try {
-                        String type = dis.readUTF();
+                        String type = controlDis.readUTF();
                         if ("CTL".equals(type)) {
-                            String action = dis.readUTF();
-                            int x = dis.readInt();
-                            int y = dis.readInt();
-                            int data = dis.readInt();
+                            String action = controlDis.readUTF();
+                            int x = controlDis.readInt();
+                            int y = controlDis.readInt();
+                            int data = controlDis.readInt();
 
                             handleControlAction(action, x, y, data);
                         }
-                    } catch (IOException e) {
-                        if (isRunning) {
-                            e.printStackTrace();
-                        }
+                    } catch (EOFException e) {
+                        System.out.println("Client đã ngắt kết nối.");
                         break;
                     }
                 }
