@@ -115,16 +115,8 @@ public class RemoteDesktopServer {
                     try {
                         while (isRunning && !socket.isClosed()) {
                             BufferedImage screenCapture = robot.createScreenCapture(screenRect);
-
-                            // Giảm kích thước ảnh
-                            Image scaledImage = screenCapture.getScaledInstance(screenCapture.getWidth() / 2, screenCapture.getHeight() / 2, Image.SCALE_SMOOTH);
-                            BufferedImage scaledBufferedImage = new BufferedImage(scaledImage.getWidth(null), scaledImage.getHeight(null), BufferedImage.TYPE_INT_RGB);
-                            Graphics g = scaledBufferedImage.createGraphics();
-                            g.drawImage(scaledImage, 0, 0, null);
-                            g.dispose();
-
                             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                            ImageIO.write(scaledBufferedImage, "jpg", baos);
+                            ImageIO.write(screenCapture, "jpg", baos);
                             byte[] imageBytes = baos.toByteArray();
 
                             dos.writeUTF("IMG");
