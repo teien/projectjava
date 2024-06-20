@@ -110,7 +110,9 @@ public class RemoteDesktopServer {
         public void run() {
             try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
                  DataInputStream dis = new DataInputStream(socket.getInputStream())) {
-
+                 dos.writeInt(screenRect.width);
+                 dos.writeInt(screenRect.height);
+                 dos.flush();
                 // Thread để gửi ảnh màn hình
                 new Thread(() -> {
                     try {
@@ -127,6 +129,10 @@ public class RemoteDesktopServer {
 
                             Thread.sleep(200); // Đợi 200ms trước khi chụp lại màn hình
                         }
+                    } catch (SocketException e) {
+
+                        System.out.println("Client đã ngắt kết nối");
+
                     } catch (IOException | InterruptedException e) {
                         if (isRunning) {
                             e.printStackTrace();

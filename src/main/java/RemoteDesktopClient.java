@@ -13,6 +13,8 @@ public class RemoteDesktopClient {
     private JFrame frame;
     private JLabel label;
     private BufferedImage currentImage;
+    private int serverScreenWidth;
+    private int serverScreenHeight;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new RemoteDesktopClient().start());
@@ -29,6 +31,8 @@ public class RemoteDesktopClient {
             socket = new Socket(ip, 12345);
             DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
             dis = new DataInputStream(socket.getInputStream());
+            serverScreenWidth = dis.readInt();
+            serverScreenHeight = dis.readInt();
 
             System.out.println("Đã kết nối tới server");
 
@@ -114,7 +118,12 @@ public class RemoteDesktopClient {
             e.printStackTrace();
         }
     }
-
+    private Point adjustMouseCoordinates(Point clientPoint) {
+        Dimension frameSize = frame.getContentPane().getSize();
+        int x = (int) (clientPoint.x * (serverScreenWidth / (double) frameSize.width));
+        int y = (int) (clientPoint.y * (serverScreenHeight / (double) frameSize.height));
+        return new Point(x, y);
+    }
     private void updateImage() {
         if (currentImage != null) {
             Dimension frameSize = frame.getContentPane().getSize();
@@ -153,10 +162,11 @@ public class RemoteDesktopClient {
 
             private void sendMouseEvent(String action, Point point, DataOutputStream dos, int button) {
                 try {
+                    Point adjustedPoint = adjustMouseCoordinates(point);
                     dos.writeUTF("CTL");
                     dos.writeUTF(action);
-                    dos.writeInt(point.x);
-                    dos.writeInt(point.y);
+                    dos.writeInt(adjustedPoint.x);
+                    dos.writeInt(adjustedPoint.y);
                     dos.writeInt(button);
                     dos.flush();
                 } catch (SocketException ex) {
