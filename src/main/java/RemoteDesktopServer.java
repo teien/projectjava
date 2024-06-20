@@ -1,106 +1,143 @@
+import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import javax.swing.*;
+import javax.imageio.ImageIO;
 
 public class RemoteDesktopServer extends JFrame {
-    private JButton startButton;
-    private JButton stopButton;
-    private JLabel statusLabel;
-    private ServerSocket screenSocket;
-    private ServerSocket controlSocket;
-    private boolean running;
+    private ServerSocket serverSocket;
+    private ServerThread serverThread;
+    private JTextArea logArea;
 
     public RemoteDesktopServer() {
-        initializeUI();
-    }
-
-    private void initializeUI() {
         setTitle("Remote Desktop Server");
-        setSize(300, 150);
+        setSize(400, 300);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        initComponents();
         setLocationRelativeTo(null);
 
-        startButton = new JButton("Start");
-        stopButton = new JButton("Stop");
-        statusLabel = new JLabel("Server is stopped", SwingConstants.CENTER);
+    }
+
+    private void initComponents() {
+        JButton startButton = new JButton("Start");
+        JButton stopButton = new JButton("Stop");
+        logArea = new JTextArea();
+        logArea.setEditable(false);
 
         startButton.addActionListener(e -> startServer());
+
         stopButton.addActionListener(e -> stopServer());
 
-        stopButton.setEnabled(false);
-
-        setLayout(new BorderLayout());
-        add(statusLabel, BorderLayout.CENTER);
         JPanel panel = new JPanel();
         panel.add(startButton);
         panel.add(stopButton);
-        add(panel, BorderLayout.SOUTH);
+
+        getContentPane().add(panel, BorderLayout.NORTH);
+        getContentPane().add(new JScrollPane(logArea), BorderLayout.CENTER);
     }
 
     private void startServer() {
-        if (running) return;
-
-        try {
-            screenSocket = new ServerSocket(12345);
-            controlSocket = new ServerSocket(12346);
-            running = true;
-
-            new Thread(this::handleScreenSocket).start();
-            new Thread(this::handleControlSocket).start();
-
-            statusLabel.setText("Server is running");
-            startButton.setEnabled(false);
-            stopButton.setEnabled(true);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (serverThread == null || !serverThread.isAlive()) {
+            try {
+                serverSocket = new ServerSocket(5000);
+                serverThread = new ServerThread();
+                serverThread.start();
+                logArea.append("Server started on port 5000\n");
+            } catch (IOException e) {
+                logArea.append("Error starting server: " + e.getMessage() + "\n");
+                e.printStackTrace();
+            }
         }
     }
 
     private void stopServer() {
-        if (!running) return;
-
-        try {
-            running = false;
-            if (screenSocket != null) screenSocket.close();
-            if (controlSocket != null) controlSocket.close();
-
-            statusLabel.setText("Server is stopped");
-            startButton.setEnabled(true);
-            stopButton.setEnabled(false);
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (serverThread != null && serverThread.isAlive()) {
+            try {
+                serverSocket.close();
+                serverThread.interrupt();
+                logArea.append("Server stopped\n");
+            } catch (IOException e) {
+                logArea.append("Error stopping server: " + e.getMessage() + "\n");
+                e.printStackTrace();
+            }
         }
     }
 
-    private void handleScreenSocket() {
-        try {
-            while (running) {
-                Socket clientSocket = screenSocket.accept();
-                // Handle screen data from the client here
+    private class ServerThread extends Thread {
+        @Override
+        public void run() {
+            while (!serverSocket.isClosed()) {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    logArea.append("Client connected: " + clientSocket.getInetAddress() + "\n");
+                    new ClientHandler(clientSocket).start();
+                } catch (IOException e) {
+                    if (!serverSocket.isClosed()) {
+                        logArea.append("Server exception: " + e.getMessage() + "\n");
+                        e.printStackTrace();
+                    }
+                }
             }
-        } catch (IOException e) {
-            if (running) e.printStackTrace();
         }
     }
 
-    private void handleControlSocket() {
-        try {
-            while (running) {
-                Socket clientSocket = controlSocket.accept();
-                // Handle control data from the client here
+    private class ClientHandler extends Thread {
+        private final Socket socket;
+        private Robot robot;
+
+        public ClientHandler(Socket socket) {
+            this.socket = socket;
+            try {
+                this.robot = new Robot();
+            } catch (AWTException e) {
+                e.printStackTrace();
             }
-        } catch (IOException e) {
-            if (running) e.printStackTrace();
+        }
+
+        @Override
+        public void run() {
+            try (BufferedOutputStream imageOutputStream = new BufferedOutputStream(socket.getOutputStream());
+                 ObjectInputStream eventInputStream = new ObjectInputStream(socket.getInputStream())) {
+                while (true) {
+                    // Capture the screen
+                    Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+                    BufferedImage screenCapture = robot.createScreenCapture(screenRect);
+                    ImageIO.write(screenCapture, "jpeg", imageOutputStream);
+                    imageOutputStream.flush();
+
+                    // Receive and process client events
+                    Object event = eventInputStream.readObject();
+                    if (event instanceof String) {
+                        String[] eventDetails = ((String) event).split(":");
+                        String eventType = eventDetails[0];
+                        int x = Integer.parseInt(eventDetails[1]);
+                        int y = Integer.parseInt(eventDetails[2]);
+                        if ("MOUSE_MOVE".equals(eventType)) {
+                            robot.mouseMove(x, y);
+                        } else if ("MOUSE_CLICK".equals(eventType)) {
+                            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+                            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                        } else if ("KEY_PRESS".equals(eventType)) {
+                            robot.keyPress(x);
+                            robot.keyRelease(x);
+                        }
+                    }
+                }
+            } catch (IOException | ClassNotFoundException e) {
+                logArea.append("ClientHandler exception: " + e.getMessage() + "\n");
+                e.printStackTrace();
+            }
         }
     }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            RemoteDesktopServer server = new RemoteDesktopServer();
-            server.setVisible(true);
+            new RemoteDesktopServer().setVisible(true);
         });
     }
 }

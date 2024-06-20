@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 
+
 public class SystemTrayApp {
 
     public static class SettingsDialog extends JDialog {
@@ -138,22 +139,10 @@ public class SystemTrayApp {
             SettingsDialog settingsDialog = new SettingsDialog(frame);
             settingsDialog.setVisible(true);
         });
-        updateWeather.addActionListener(e -> {
-            SystemMonitorUI.updateWeatherInfo();
-        });
-        updateNetwork.addActionListener(e -> {
-            SystemMonitorUI.initializeSystemInfo();
-        });
-        remoteServer.addActionListener(e -> {
-            new Thread(() -> {
-                RemoteDesktopServer.main(null);
-            }).start();
-        });
-        remoteClient.addActionListener(e -> {
-            new Thread(() -> {
-                RemoteDesktopClient.main(null);
-            }).start();
-        });
+        updateWeather.addActionListener(e -> SystemMonitorUI.updateWeatherInfo());
+        updateNetwork.addActionListener(e -> SystemMonitorUI.initializeSystemInfo());
+        remoteServer.addActionListener(e -> new Thread(() -> RemoteDesktopServer.main(null)).start());
+        remoteClient.addActionListener(e -> new Thread(() -> RemoteDesktopClient.main(null)).start());
 
         exitItem.addActionListener(e -> System.exit(0));
 
