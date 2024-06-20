@@ -2,22 +2,20 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.Socket;
-import java.net.SocketException;
+import java.net.*;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 
-public class RemoteDesktopClient {
-    private Socket socket;
-    private DataInputStream dis;
+public class RemoteDesktopClientUDP {
+    private DatagramSocket socket;
     private JFrame frame;
     private JLabel label;
     private BufferedImage currentImage;
     private int serverScreenWidth;
     private int serverScreenHeight;
-//TCP Connection
+
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new RemoteDesktopClient().start());
+        SwingUtilities.invokeLater(() -> new RemoteDesktopClientUDP().start());
     }
 
     public void start() {
@@ -28,13 +26,8 @@ public class RemoteDesktopClient {
         }
 
         try {
-            socket = new Socket(ip, 12345);
-            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            dis = new DataInputStream(socket.getInputStream());
-            serverScreenWidth = dis.readInt();
-            serverScreenHeight = dis.readInt();
-
-            System.out.println("Đã kết nối tới server");
+            socket = new DatagramSocket();
+            InetAddress serverAddress = InetAddress.getByName(ip);
 
             frame = new JFrame("Remote Desktop Viewer");
             label = new JLabel();
@@ -44,68 +37,38 @@ public class RemoteDesktopClient {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosed(WindowEvent e) {
-                    try {
-                        socket.close();
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
+                    socket.close();
                 }
             });
 
             frame.setVisible(true);
 
-            addMouseListeners(label, dos);
-            addKeyListeners(frame, dos);
+            addMouseListeners(label, serverAddress);
+            addKeyListeners(frame, serverAddress);
 
-            SwingWorker<Void, BufferedImage> worker = new SwingWorker<>() {
-                @Override
-                protected Void doInBackground() throws Exception {
+            new Thread(() -> {
+                byte[] buffer = new byte[65536];
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                while (true) {
                     try {
-                        while (!isCancelled()) {
-                            try {
-                                String type = dis.readUTF();
-                                if ("IMG".equals(type)) {
-                                    int length = dis.readInt();
-                                    byte[] imageBytes = new byte[length];
-                                    dis.readFully(imageBytes);
-                                    ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
-                                    BufferedImage image = ImageIO.read(bais);
-                                    publish(image);
-                                }
-                            } catch (EOFException | SocketException e) {
-                                System.out.println("Server đã đóng kết nối");
-                                break; // Thoát vòng lặp khi kết nối bị đóng
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                                break; // Thoát vòng lặp khi gặp lỗi khác
-                            }
+                        socket.receive(packet);
+                        ByteArrayInputStream bais = new ByteArrayInputStream(packet.getData());
+                        BufferedImage image = ImageIO.read(bais);
+                        if (image != null) {
+                            currentImage = image;
+                            updateImage();
                         }
-                    } finally {
-                        try {
-                            socket.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    return null;
-                }
 
-                @Override
-                protected void process(java.util.List<BufferedImage> chunks) {
-                    currentImage = chunks.get(chunks.size() - 1);
-                    updateImage();
-                }
+                    } catch (SocketException e) {
+                        System.out.println("Đã ngắt kết nối");
+                        break;
 
-                @Override
-                protected void done() {
-                    try {
-                        socket.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-            };
-            worker.execute();
+            }).start();
+
             frame.addComponentListener(new ComponentAdapter() {
                 @Override
                 public void componentResized(ComponentEvent e) {
@@ -118,12 +81,14 @@ public class RemoteDesktopClient {
             e.printStackTrace();
         }
     }
+
     private Point adjustMouseCoordinates(Point clientPoint) {
         Dimension frameSize = frame.getContentPane().getSize();
         int x = (int) (clientPoint.x * (serverScreenWidth / (double) frameSize.width));
         int y = (int) (clientPoint.y * (serverScreenHeight / (double) frameSize.height));
         return new Point(x, y);
     }
+
     private void updateImage() {
         if (currentImage != null) {
             Dimension frameSize = frame.getContentPane().getSize();
@@ -133,44 +98,46 @@ public class RemoteDesktopClient {
         }
     }
 
-    private void addMouseListeners(JLabel label, DataOutputStream dos) {
+    private void addMouseListeners(JLabel label, InetAddress serverAddress) {
         MouseAdapter mouseAdapter = new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                sendMouseEvent("CLICK", e.getPoint(), dos, e.getButton());
+                sendMouseEvent("CLICK", e.getPoint(), serverAddress, e.getButton());
             }
 
             @Override
             public void mousePressed(MouseEvent e) {
-                sendMouseEvent("MOUSE_PRESS", e.getPoint(), dos, e.getButton());
+                sendMouseEvent("MOUSE_PRESS", e.getPoint(), serverAddress, e.getButton());
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                sendMouseEvent("MOUSE_RELEASE", e.getPoint(), dos, e.getButton());
+                sendMouseEvent("MOUSE_RELEASE", e.getPoint(), serverAddress, e.getButton());
             }
 
             @Override
             public void mouseMoved(MouseEvent e) {
-                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
+                sendMouseEvent("MOVE", e.getPoint(), serverAddress, -1);
             }
 
             @Override
             public void mouseDragged(MouseEvent e) {
-                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
+                sendMouseEvent("MOVE", e.getPoint(), serverAddress, -1);
             }
 
-            private void sendMouseEvent(String action, Point point, DataOutputStream dos, int button) {
+            private void sendMouseEvent(String action, Point point, InetAddress serverAddress, int button) {
                 try {
                     Point adjustedPoint = adjustMouseCoordinates(point);
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    DataOutputStream dos = new DataOutputStream(baos);
                     dos.writeUTF("CTL");
                     dos.writeUTF(action);
                     dos.writeInt(adjustedPoint.x);
                     dos.writeInt(adjustedPoint.y);
                     dos.writeInt(button);
-                    dos.flush();
-                } catch (SocketException ex) {
-                    System.out.println("Server đã đóng kết nối");
+                    byte[] data = baos.toByteArray();
+                    DatagramPacket packet = new DatagramPacket(data, data.length, serverAddress, 12345);
+                    socket.send(packet);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -181,28 +148,30 @@ public class RemoteDesktopClient {
         label.addMouseMotionListener(mouseAdapter);
     }
 
-    private void addKeyListeners(JFrame frame, DataOutputStream dos) {
+    private void addKeyListeners(JFrame frame, InetAddress serverAddress) {
         KeyAdapter keyAdapter = new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-                sendKeyEvent("PRESS", e.getKeyCode(), dos);
+                sendKeyEvent("PRESS", e.getKeyCode(), serverAddress);
             }
 
             @Override
             public void keyReleased(KeyEvent e) {
-                sendKeyEvent("RELEASE", e.getKeyCode(), dos);
+                sendKeyEvent("RELEASE", e.getKeyCode(), serverAddress);
             }
 
-            private void sendKeyEvent(String action, int keyCode, DataOutputStream dos) {
+            private void sendKeyEvent(String action, int keyCode, InetAddress serverAddress) {
                 try {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    DataOutputStream dos = new DataOutputStream(baos);
                     dos.writeUTF("CTL");
                     dos.writeUTF(action);
                     dos.writeInt(-1);
                     dos.writeInt(-1);
                     dos.writeInt(keyCode);
-                    dos.flush();
-                } catch (SocketException ex) {
-                    System.out.println("Server đã đóng kết nối");
+                    byte[] data = baos.toByteArray();
+                    DatagramPacket packet = new DatagramPacket(data, data.length, serverAddress, 12345);
+                    socket.send(packet);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
