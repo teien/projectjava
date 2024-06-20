@@ -1,98 +1,160 @@
-import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.Socket;
+import javax.imageio.ImageIO;
+import javax.swing.*;
 
-public class RemoteDesktopClient extends JFrame {
-    private final Socket socket;
-    private BufferedImage image;
-    private final ObjectOutputStream eventOutputStream;
-    private final BufferedInputStream imageInputStream;
+public class RemoteDesktopClient {
+    private Socket socket;
+    private DataOutputStream dos;
+    private DataInputStream dis;
+    private SwingWorker<Void, BufferedImage> worker;
 
-    public RemoteDesktopClient(String serverAddress) throws IOException {
-        this.socket = new Socket(serverAddress, 5000);
-        this.eventOutputStream = new ObjectOutputStream(socket.getOutputStream());
-        this.imageInputStream = new BufferedInputStream(socket.getInputStream());
-        initComponents();
-        new ScreenReceiver().start();
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new RemoteDesktopClient().start());
     }
 
-    private void initComponents() {
-        setTitle("Remote Desktop Client");
-        setSize(800, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
+    public void start() {
+        String ip = JOptionPane.showInputDialog("Nhập IP của server");
+        if (ip == null || ip.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "IP không hợp lệ");
+            return;
+        }
 
-        JPanel panel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                if (image != null) {
-                    g.drawImage(image, 0, 0, this);
-                }
-            }
-        };
-        add(panel);
-        addMouseMotionListener(new MouseAdapter() {
-            public void mouseMoved(MouseEvent e) {
-                sendEvent("MOUSE_MOVE:" + e.getX() + ":" + e.getY());
-            }
-        });
-        addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                sendEvent("MOUSE_CLICK:" + e.getX() + ":" + e.getY());
-            }
-        });
-        addKeyListener(new KeyAdapter() {
-            public void keyPressed(KeyEvent e) {
-                sendEvent("KEY_PRESS:" + e.getKeyCode() + ":0");
-            }
-        });
-    }
-
-    private void sendEvent(String event) {
         try {
-            eventOutputStream.writeObject(event);
-            eventOutputStream.flush();
+            socket = new Socket(ip, 12345);
+            dos = new DataOutputStream(socket.getOutputStream());
+            dis = new DataInputStream(socket.getInputStream());
+
+            System.out.println("Đã kết nối tới server");
+
+            JFrame frame = new JFrame("Remote Desktop Viewer");
+            JLabel label = new JLabel();
+            frame.add(label);
+            frame.setSize(800, 600);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setVisible(true);
+
+            addMouseListeners(label, dos);
+            addKeyListeners(frame, dos);
+
+            worker = new SwingWorker<>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    while (!isCancelled()) {
+                        try {
+                            String type = dis.readUTF();
+                            if ("IMG".equals(type)) {
+                                int length = dis.readInt();
+                                byte[] imageBytes = new byte[length];
+                                dis.readFully(imageBytes);
+                                ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
+                                BufferedImage image = ImageIO.read(bais);
+                                publish(image);
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            break; // Exit the loop on error
+                        }
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void process(java.util.List<BufferedImage> chunks) {
+                    BufferedImage image = chunks.get(chunks.size() - 1);
+                    label.setIcon(new ImageIcon(image));
+                    label.repaint();
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            worker.execute();
+
         } catch (IOException e) {
-            System.err.println("Event send exception: " + e.getMessage());
+            JOptionPane.showMessageDialog(null, "Lỗi kết nối tới server: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    private class ScreenReceiver extends Thread {
-        public void run() {
-            try {
-                while (true) {
-                    image = ImageIO.read(imageInputStream);
-                    if (image != null) {
-                        repaint();
-                    }
-                }
-            } catch (IOException e) {
-                System.err.println("ScreenReceiver exception: " + e.getMessage());
-                e.printStackTrace();
-            } finally {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+    private void addMouseListeners(JLabel label, DataOutputStream dos) {
+        MouseAdapter mouseAdapter = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                sendMouseEvent("CLICK", e.getPoint(), dos, e.getButton());
             }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                sendMouseEvent("MOUSE_PRESS", e.getPoint(), dos, e.getButton());
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                sendMouseEvent("MOUSE_RELEASE", e.getPoint(), dos, e.getButton());
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                sendMouseEvent("MOVE", e.getPoint(), dos, 0);
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                sendMouseEvent("MOVE", e.getPoint(), dos, 0);
+            }
+        };
+        label.addMouseListener(mouseAdapter);
+        label.addMouseMotionListener(mouseAdapter);
+    }
+
+    private void addKeyListeners(JFrame frame, DataOutputStream dos) {
+        KeyAdapter keyAdapter = new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                sendKeyEvent("PRESS", e.getKeyCode(), dos);
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                sendKeyEvent("RELEASE", e.getKeyCode(), dos);
+            }
+        };
+        frame.addKeyListener(keyAdapter);
+    }
+
+    private static void sendMouseEvent(String action, Point point, DataOutputStream dos, int button) {
+        try {
+            dos.writeUTF("CTL");
+            dos.writeUTF(action);
+            dos.writeInt(point.x);
+            dos.writeInt(point.y);
+            dos.writeInt(button);
+            dos.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                String ip = JOptionPane.showInputDialog("Enter server IP address:");
-                new RemoteDesktopClient(ip).setVisible(true);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
+    private static void sendKeyEvent(String action, int keycode, DataOutputStream dos) {
+        try {
+            dos.writeUTF("CTL");
+            dos.writeUTF(action);
+            dos.writeInt(0);  // x
+            dos.writeInt(0);  // y
+            dos.writeInt(keycode);
+            dos.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

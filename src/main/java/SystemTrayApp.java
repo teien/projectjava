@@ -141,8 +141,20 @@ public class SystemTrayApp {
         });
         updateWeather.addActionListener(e -> SystemMonitorUI.updateWeatherInfo());
         updateNetwork.addActionListener(e -> SystemMonitorUI.initializeSystemInfo());
-        remoteServer.addActionListener(e -> new Thread(() -> RemoteDesktopServer.main(null)).start());
-        remoteClient.addActionListener(e -> new Thread(() -> RemoteDesktopClient.main(null)).start());
+        remoteServer.addActionListener(e -> new Thread(() -> {
+            try {
+                RemoteDesktopServer.main(null);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());
+        remoteClient.addActionListener(e -> new Thread(() -> {
+            try {
+                RemoteDesktopClient.main(null);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());
 
         exitItem.addActionListener(e -> System.exit(0));
 

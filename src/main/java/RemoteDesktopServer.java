@@ -1,99 +1,99 @@
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.InputEvent;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import javax.imageio.ImageIO;
+import javax.swing.*;
 
-public class RemoteDesktopServer extends JFrame {
+public class RemoteDesktopServer {
     private ServerSocket serverSocket;
-    private ServerThread serverThread;
-    private JTextArea logArea;
+    private boolean isRunning = false;
+    private JButton startButton;
+    private JButton stopButton;
 
-    public RemoteDesktopServer() {
-        setTitle("Remote Desktop Server");
-        setSize(400, 300);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        initComponents();
-        setLocationRelativeTo(null);
-
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new RemoteDesktopServer().createAndShowGUI());
     }
 
-    private void initComponents() {
-        JButton startButton = new JButton("Start");
-        JButton stopButton = new JButton("Stop");
-        logArea = new JTextArea();
-        logArea.setEditable(false);
+    private void createAndShowGUI() {
+        JFrame frame = new JFrame("Remote Desktop Server");
+        frame.setSize(200, 105);
+        frame.setLayout(new FlowLayout());
+        frame.setResizable(false);
+        frame.setLocationRelativeTo(null);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        startButton = new JButton("Start Server");
+        stopButton = new JButton("Stop Server");
+        stopButton.setEnabled(false);
 
         startButton.addActionListener(e -> startServer());
-
         stopButton.addActionListener(e -> stopServer());
 
-        JPanel panel = new JPanel();
-        panel.add(startButton);
-        panel.add(stopButton);
-
-        getContentPane().add(panel, BorderLayout.NORTH);
-        getContentPane().add(new JScrollPane(logArea), BorderLayout.CENTER);
+        frame.add(startButton);
+        frame.add(stopButton);
+        frame.setVisible(true);
     }
 
     private void startServer() {
-        if (serverThread == null || !serverThread.isAlive()) {
-            try {
-                serverSocket = new ServerSocket(5000);
-                serverThread = new ServerThread();
-                serverThread.start();
-                logArea.append("Server started on port 5000\n");
-            } catch (IOException e) {
-                logArea.append("Error starting server: " + e.getMessage() + "\n");
-                e.printStackTrace();
-            }
+        if (!isRunning) {
+            isRunning = true;
+            startButton.setEnabled(false);
+            stopButton.setEnabled(true);
+
+            new Thread(() -> {
+                try {
+                    serverSocket = new ServerSocket(12345);
+                    System.out.println("Server đang chờ kết nối...");
+
+                    while (isRunning) {
+                        try {
+                            Socket socket = serverSocket.accept();
+                            System.out.println("Client đã kết nối");
+                            new ClientHandler(socket).start();
+                        } catch (IOException e) {
+                            if (isRunning) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
         }
     }
 
     private void stopServer() {
-        if (serverThread != null && serverThread.isAlive()) {
+        if (isRunning) {
+            isRunning = false;
+            startButton.setEnabled(true);
+            stopButton.setEnabled(false);
+
             try {
-                serverSocket.close();
-                serverThread.interrupt();
-                logArea.append("Server stopped\n");
+                if (serverSocket != null) {
+                    serverSocket.close();
+                }
+                System.out.println("Server đã dừng");
             } catch (IOException e) {
-                logArea.append("Error stopping server: " + e.getMessage() + "\n");
                 e.printStackTrace();
             }
         }
     }
 
-    private class ServerThread extends Thread {
-        @Override
-        public void run() {
-            while (!serverSocket.isClosed()) {
-                try {
-                    Socket clientSocket = serverSocket.accept();
-                    logArea.append("Client connected: " + clientSocket.getInetAddress() + "\n");
-                    new ClientHandler(clientSocket).start();
-                } catch (IOException e) {
-                    if (!serverSocket.isClosed()) {
-                        logArea.append("Server exception: " + e.getMessage() + "\n");
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-    }
-
-    private class ClientHandler extends Thread {
+    class ClientHandler extends Thread {
         private final Socket socket;
         private Robot robot;
+        private Rectangle screenRect;
 
         public ClientHandler(Socket socket) {
             this.socket = socket;
             try {
-                this.robot = new Robot();
+                robot = new Robot();
+                Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                screenRect = new Rectangle(screenSize);
             } catch (AWTException e) {
                 e.printStackTrace();
             }
@@ -101,43 +101,85 @@ public class RemoteDesktopServer extends JFrame {
 
         @Override
         public void run() {
-            try (BufferedOutputStream imageOutputStream = new BufferedOutputStream(socket.getOutputStream());
-                 ObjectInputStream eventInputStream = new ObjectInputStream(socket.getInputStream())) {
-                while (true) {
-                    // Capture the screen
-                    Rectangle screenRect = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-                    BufferedImage screenCapture = robot.createScreenCapture(screenRect);
-                    ImageIO.write(screenCapture, "jpeg", imageOutputStream);
-                    imageOutputStream.flush();
+            try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                 DataInputStream dis = new DataInputStream(socket.getInputStream())) {
 
-                    // Receive and process client events
-                    Object event = eventInputStream.readObject();
-                    if (event instanceof String) {
-                        String[] eventDetails = ((String) event).split(":");
-                        String eventType = eventDetails[0];
-                        int x = Integer.parseInt(eventDetails[1]);
-                        int y = Integer.parseInt(eventDetails[2]);
-                        if ("MOUSE_MOVE".equals(eventType)) {
-                            robot.mouseMove(x, y);
-                        } else if ("MOUSE_CLICK".equals(eventType)) {
-                            robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-                            robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
-                        } else if ("KEY_PRESS".equals(eventType)) {
-                            robot.keyPress(x);
-                            robot.keyRelease(x);
+                // Thread để gửi ảnh màn hình
+                new Thread(() -> {
+                    try {
+                        while (isRunning && !socket.isClosed()) {
+                            BufferedImage screenCapture = robot.createScreenCapture(screenRect);
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            ImageIO.write(screenCapture, "jpg", baos);
+                            byte[] imageBytes = baos.toByteArray();
+
+                            dos.writeUTF("IMG");
+                            dos.writeInt(imageBytes.length);
+                            dos.write(imageBytes);
+                            dos.flush();
+
+                            Thread.sleep(100); // Đợi 100ms trước khi chụp lại màn hình
                         }
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }).start();
+
+                // Xử lý lệnh điều khiển từ client
+                while (isRunning && !socket.isClosed()) {
+                    try {
+                        String type = dis.readUTF();
+                        if ("CTL".equals(type)) {
+                            String action = dis.readUTF();
+                            int x = dis.readInt();
+                            int y = dis.readInt();
+                            int data = dis.readInt();
+
+                            handleControlAction(action, x, y, data);
+                        }
+                    } catch (IOException e) {
+                        if (isRunning) {
+                            e.printStackTrace();
+                        }
+                        break;
                     }
                 }
-            } catch (IOException | ClassNotFoundException e) {
-                logArea.append("ClientHandler exception: " + e.getMessage() + "\n");
+            } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
-    }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new RemoteDesktopServer().setVisible(true);
-        });
+        private void handleControlAction(String action, int x, int y, int data) {
+            switch (action) {
+                case "CLICK":
+                    robot.mouseMove(x, y);
+                    robot.mousePress(InputEvent.getMaskForButton(data));
+                    robot.mouseRelease(InputEvent.getMaskForButton(data));
+                    break;
+                case "MOUSE_PRESS":
+                    robot.mouseMove(x, y);
+                    robot.mousePress(InputEvent.getMaskForButton(data));
+                    break;
+                case "MOUSE_RELEASE":
+                    robot.mouseMove(x, y);
+                    robot.mouseRelease(InputEvent.getMaskForButton(data));
+                    break;
+                case "MOVE":
+                    robot.mouseMove(x, y);
+                    break;
+                case "PRESS":
+                    robot.keyPress(data);
+                    break;
+                case "RELEASE":
+                    robot.keyRelease(data);
+                    break;
+            }
+        }
     }
 }
