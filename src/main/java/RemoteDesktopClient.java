@@ -3,6 +3,7 @@ import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 
@@ -40,11 +41,7 @@ public class RemoteDesktopClient {
                 @Override
                 public void windowClosed(WindowEvent e) {
                     try {
-                        if (!socket.isClosed()) {
-                            socket.close();
-
-                        }
-                        System.out.println("Client đã ngắt kết nối tới server");
+                        socket.close();
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
@@ -56,26 +53,34 @@ public class RemoteDesktopClient {
             addMouseListeners(label, dos);
             addKeyListeners(frame, dos);
 
-            // Exit the loop on error
             SwingWorker<Void, BufferedImage> worker = new SwingWorker<>() {
                 @Override
-                protected Void doInBackground() {
-                    while (!isCancelled() && !socket.isClosed()) {
-                        try {
-                            String type = dis.readUTF();
-                            if ("IMG".equals(type)) {
-                                int length = dis.readInt();
-                                byte[] imageBytes = new byte[length];
-                                dis.readFully(imageBytes);
-                                ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
-                                BufferedImage image = ImageIO.read(bais);
-                                publish(image);
-                            }
-                        } catch (IOException e) {
-                            if (!socket.isClosed()) {
+                protected Void doInBackground() throws Exception {
+                    try {
+                        while (!isCancelled()) {
+                            try {
+                                String type = dis.readUTF();
+                                if ("IMG".equals(type)) {
+                                    int length = dis.readInt();
+                                    byte[] imageBytes = new byte[length];
+                                    dis.readFully(imageBytes);
+                                    ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
+                                    BufferedImage image = ImageIO.read(bais);
+                                    publish(image);
+                                }
+                            } catch (EOFException | SocketException e) {
+                                System.out.println("Server đã đóng kết nối");
+                                break; // Thoát vòng lặp khi kết nối bị đóng
+                            } catch (IOException e) {
                                 e.printStackTrace();
+                                break; // Thoát vòng lặp khi gặp lỗi khác
                             }
-                            break;
+                        }
+                    } finally {
+                        try {
+                            socket.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
                     }
                     return null;
@@ -90,9 +95,7 @@ public class RemoteDesktopClient {
                 @Override
                 protected void done() {
                     try {
-                        if (!socket.isClosed()) {
-                            socket.close();
-                        }
+                        socket.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -156,6 +159,8 @@ public class RemoteDesktopClient {
                     dos.writeInt(point.y);
                     dos.writeInt(button);
                     dos.flush();
+                } catch (SocketException ex) {
+                    System.out.println("Server đã đóng kết nối");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -186,6 +191,8 @@ public class RemoteDesktopClient {
                     dos.writeInt(-1);
                     dos.writeInt(keyCode);
                     dos.flush();
+                } catch (SocketException ex) {
+                    System.out.println("Server đã đóng kết nối");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }

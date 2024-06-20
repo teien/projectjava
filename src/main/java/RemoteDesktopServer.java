@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 
@@ -110,6 +111,7 @@ public class RemoteDesktopServer {
             try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
                  DataInputStream dis = new DataInputStream(socket.getInputStream())) {
 
+                // Thread để gửi ảnh màn hình
                 new Thread(() -> {
                     try {
                         while (isRunning && !socket.isClosed()) {
@@ -143,6 +145,14 @@ public class RemoteDesktopServer {
 
                             handleControlAction(action, x, y, data);
                         }
+                    } catch (EOFException e) {
+                        // Client ngắt kết nối
+                        System.out.println("Client đã ngắt kết nối");
+                        break;
+                    } catch (SocketException e) {
+                        // Server đã đóng kết nối
+                        System.out.println("Server đã đóng kết nối");
+                        break;
                     } catch (IOException e) {
                         if (isRunning) {
                             e.printStackTrace();
