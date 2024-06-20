@@ -30,9 +30,7 @@ public class RemoteDesktopClient {
 
             JFrame frame = new JFrame("Remote Desktop Viewer");
             JLabel label = new JLabel();
-            JScrollPane scrollPane = new JScrollPane(label);
-            frame.add(scrollPane);
-            frame.setExtendedState(JFrame.MAXIMIZED_BOTH); // Hiển thị toàn màn hình
+            frame.add(label);
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             frame.addWindowListener(new WindowAdapter() {
                 @Override
@@ -44,6 +42,7 @@ public class RemoteDesktopClient {
                     }
                 }
             });
+
             frame.setVisible(true);
 
             addMouseListeners(label, dos);
@@ -76,6 +75,11 @@ public class RemoteDesktopClient {
                 protected void process(java.util.List<BufferedImage> chunks) {
                     BufferedImage image = chunks.get(chunks.size() - 1);
                     label.setIcon(new ImageIcon(image));
+
+                    // Đặt kích thước của frame và label dựa trên kích thước của hình ảnh
+                    frame.setSize(image.getWidth(), image.getHeight());
+                    label.setSize(image.getWidth(), image.getHeight());
+
                     label.repaint();
                 }
 
