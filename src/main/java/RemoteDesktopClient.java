@@ -8,9 +8,7 @@ import javax.swing.*;
 
 public class RemoteDesktopClient {
     private Socket socket;
-    private DataOutputStream dos;
     private DataInputStream dis;
-    private SwingWorker<Void, BufferedImage> worker;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new RemoteDesktopClient().start());
@@ -25,22 +23,34 @@ public class RemoteDesktopClient {
 
         try {
             socket = new Socket(ip, 12345);
-            dos = new DataOutputStream(socket.getOutputStream());
+            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
             dis = new DataInputStream(socket.getInputStream());
 
             System.out.println("Đã kết nối tới server");
 
             JFrame frame = new JFrame("Remote Desktop Viewer");
             JLabel label = new JLabel();
-            frame.add(label);
-            frame.setSize(800, 600);
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            JScrollPane scrollPane = new JScrollPane(label);
+            frame.add(scrollPane);
+            frame.setExtendedState(JFrame.MAXIMIZED_BOTH); // Hiển thị toàn màn hình
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent e) {
+                    try {
+                        socket.close();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
             frame.setVisible(true);
 
             addMouseListeners(label, dos);
             addKeyListeners(frame, dos);
 
-            worker = new SwingWorker<>() {
+            // Exit the loop on error
+            SwingWorker<Void, BufferedImage> worker = new SwingWorker<>() {
                 @Override
                 protected Void doInBackground() throws Exception {
                     while (!isCancelled()) {
@@ -105,14 +115,28 @@ public class RemoteDesktopClient {
 
             @Override
             public void mouseMoved(MouseEvent e) {
-                sendMouseEvent("MOVE", e.getPoint(), dos, 0);
+                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
             }
 
             @Override
             public void mouseDragged(MouseEvent e) {
-                sendMouseEvent("MOVE", e.getPoint(), dos, 0);
+                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
+            }
+
+            private void sendMouseEvent(String action, Point point, DataOutputStream dos, int button) {
+                try {
+                    dos.writeUTF("CTL");
+                    dos.writeUTF(action);
+                    dos.writeInt(point.x);
+                    dos.writeInt(point.y);
+                    dos.writeInt(button);
+                    dos.flush();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
             }
         };
+
         label.addMouseListener(mouseAdapter);
         label.addMouseMotionListener(mouseAdapter);
     }
@@ -128,33 +152,21 @@ public class RemoteDesktopClient {
             public void keyReleased(KeyEvent e) {
                 sendKeyEvent("RELEASE", e.getKeyCode(), dos);
             }
+
+            private void sendKeyEvent(String action, int keyCode, DataOutputStream dos) {
+                try {
+                    dos.writeUTF("CTL");
+                    dos.writeUTF(action);
+                    dos.writeInt(-1);
+                    dos.writeInt(-1);
+                    dos.writeInt(keyCode);
+                    dos.flush();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
         };
+
         frame.addKeyListener(keyAdapter);
-    }
-
-    private static void sendMouseEvent(String action, Point point, DataOutputStream dos, int button) {
-        try {
-            dos.writeUTF("CTL");
-            dos.writeUTF(action);
-            dos.writeInt(point.x);
-            dos.writeInt(point.y);
-            dos.writeInt(button);
-            dos.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void sendKeyEvent(String action, int keycode, DataOutputStream dos) {
-        try {
-            dos.writeUTF("CTL");
-            dos.writeUTF(action);
-            dos.writeInt(0);  // x
-            dos.writeInt(0);  // y
-            dos.writeInt(keycode);
-            dos.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 }

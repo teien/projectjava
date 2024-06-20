@@ -24,6 +24,12 @@ public class RemoteDesktopServer {
         frame.setResizable(false);
         frame.setLocationRelativeTo(null);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                stopServer();
+            }
+        });
 
         startButton = new JButton("Start Server");
         stopButton = new JButton("Stop Server");
@@ -118,10 +124,12 @@ public class RemoteDesktopServer {
                             dos.write(imageBytes);
                             dos.flush();
 
-                            Thread.sleep(100); // Đợi 100ms trước khi chụp lại màn hình
+                            Thread.sleep(200); // Đợi 200ms trước khi chụp lại màn hình
                         }
                     } catch (IOException | InterruptedException e) {
-                        e.printStackTrace();
+                        if (isRunning) {
+                            e.printStackTrace();
+                        }
                     }
                 }).start();
 
