@@ -79,7 +79,7 @@ public class RemoteDesktopServer {
             stopButton.setEnabled(false);
 
             try {
-                if (serverSocket != null) {
+                if (serverSocket != null && !serverSocket.isClosed()) {
                     serverSocket.close();
                 }
                 System.out.println("Server đã dừng");
@@ -110,7 +110,6 @@ public class RemoteDesktopServer {
             try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
                  DataInputStream dis = new DataInputStream(socket.getInputStream())) {
 
-                // Thread để gửi ảnh màn hình
                 new Thread(() -> {
                     try {
                         while (isRunning && !socket.isClosed()) {
@@ -133,7 +132,6 @@ public class RemoteDesktopServer {
                     }
                 }).start();
 
-                // Xử lý lệnh điều khiển từ client
                 while (isRunning && !socket.isClosed()) {
                     try {
                         String type = dis.readUTF();
@@ -160,6 +158,7 @@ public class RemoteDesktopServer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                System.out.println("Client đã ngắt kết nối");
             }
         }
 

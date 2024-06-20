@@ -40,7 +40,11 @@ public class RemoteDesktopClient {
                 @Override
                 public void windowClosed(WindowEvent e) {
                     try {
-                        socket.close();
+                        if (!socket.isClosed()) {
+                            socket.close();
+
+                        }
+                        System.out.println("Client đã ngắt kết nối tới server");
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
@@ -55,8 +59,8 @@ public class RemoteDesktopClient {
             // Exit the loop on error
             SwingWorker<Void, BufferedImage> worker = new SwingWorker<>() {
                 @Override
-                protected Void doInBackground() throws Exception {
-                    while (!isCancelled()) {
+                protected Void doInBackground() {
+                    while (!isCancelled() && !socket.isClosed()) {
                         try {
                             String type = dis.readUTF();
                             if ("IMG".equals(type)) {
@@ -68,8 +72,10 @@ public class RemoteDesktopClient {
                                 publish(image);
                             }
                         } catch (IOException e) {
-                            e.printStackTrace();
-                            break; // Exit the loop on error
+                            if (!socket.isClosed()) {
+                                e.printStackTrace();
+                            }
+                            break;
                         }
                     }
                     return null;
@@ -84,7 +90,9 @@ public class RemoteDesktopClient {
                 @Override
                 protected void done() {
                     try {
-                        socket.close();
+                        if (!socket.isClosed()) {
+                            socket.close();
+                        }
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
