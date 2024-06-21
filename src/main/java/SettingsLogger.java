@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 public class SettingsLogger {
     private static final String SETTINGS_FILE = "settings.json";
@@ -76,13 +77,19 @@ public class SettingsLogger {
             }""";
 
     private static File getSettingsFile() {
-        String jarDir = new File(SettingsLogger.class.getProtectionDomain().getCodeSource().getLocation().getPath()).getParent();
+        String jarDir;
+        try {
+            jarDir = new File(SettingsLogger.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
+        } catch (URISyntaxException e) {
+            jarDir = System.getProperty("user.dir");
+        }
         File dir = new File(jarDir, "config");
         if (!dir.exists()) {
             dir.mkdirs();
         }
         return new File(dir, SETTINGS_FILE);
     }
+
 
     public static void saveSettings(String fontType1, int fontSize1, Color fontColor1, String fontType2, int fontSize2, Color fontColor2, Double opacity, Color bgColor) {
         JSONObject settings = loadSettings();

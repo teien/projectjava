@@ -143,14 +143,14 @@ public class SystemTrayApp {
         updateNetwork.addActionListener(e -> SystemMonitorUI.initializeSystemInfo());
         remoteServer.addActionListener(e -> new Thread(() -> {
             try {
-                RemoteDesktopServer.main(null);
+                new RemoteDesktopClient().start();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         }).start());
         remoteClient.addActionListener(e -> new Thread(() -> {
             try {
-                RemoteDesktopClient.main(null);
+                new RemoteDesktopServer().createAndShowGUI();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }

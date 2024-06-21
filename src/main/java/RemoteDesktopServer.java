@@ -15,10 +15,10 @@ public class RemoteDesktopServer {
     private JButton stopButton;
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new RemoteDesktopServer().createAndShowGUI());
+       new RemoteDesktopServer().createAndShowGUI();
     }
 
-    private void createAndShowGUI() {
+    void createAndShowGUI() {
         JFrame frame = new JFrame("Remote Desktop Server");
         frame.setSize(200, 105);
         frame.setLayout(new FlowLayout());
@@ -127,7 +127,7 @@ public class RemoteDesktopServer {
                             dos.write(imageBytes);
                             dos.flush();
 
-                            Thread.sleep(200); // Đợi 200ms trước khi chụp lại màn hình
+                            Thread.sleep(10); // Đợi 200ms trước khi chụp lại màn hình
                         }
                     } catch (SocketException e) {
 
@@ -159,7 +159,7 @@ public class RemoteDesktopServer {
                         // Server đã đóng kết nối
                         System.out.println("Server đã đóng kết nối");
                         break;
-                    } catch (IOException e) {
+                    } catch (IOException | InterruptedException e) {
                         if (isRunning) {
                             e.printStackTrace();
                         }
@@ -178,13 +178,13 @@ public class RemoteDesktopServer {
             }
         }
 
-        private void handleControlAction(String action, int x, int y, int data) {
+        private void handleControlAction(String action, int x, int y, int data) throws InterruptedException {
             switch (action) {
-                case "CLICK":
+                /*case "CLICK":
                     robot.mouseMove(x, y);
                     robot.mousePress(InputEvent.getMaskForButton(data));
                     robot.mouseRelease(InputEvent.getMaskForButton(data));
-                    break;
+                    break;*/
                 case "MOUSE_PRESS":
                     robot.mouseMove(x, y);
                     robot.mousePress(InputEvent.getMaskForButton(data));

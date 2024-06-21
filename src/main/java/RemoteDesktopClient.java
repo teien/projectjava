@@ -17,7 +17,7 @@ public class RemoteDesktopClient {
     private int serverScreenHeight;
 //TCP Connection
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new RemoteDesktopClient().start());
+       new RemoteDesktopClient().start();
     }
 
     public void start() {
@@ -134,11 +134,13 @@ public class RemoteDesktopClient {
     }
 
     private void addMouseListeners(JLabel label, DataOutputStream dos) {
+
         MouseAdapter mouseAdapter = new MouseAdapter() {
-            @Override
+           /* @Override
             public void mouseClicked(MouseEvent e) {
                 sendMouseEvent("CLICK", e.getPoint(), dos, e.getButton());
-            }
+                System.out.println("Mouse clicked");
+            }*/
 
             @Override
             public void mousePressed(MouseEvent e) {
