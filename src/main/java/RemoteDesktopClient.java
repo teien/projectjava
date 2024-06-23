@@ -7,7 +7,8 @@ import java.net.SocketException;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 
-public class RemoteDesktopClient {
+
+public class RemoteDesktopClient extends JFrame {
     private Socket socket;
     private DataInputStream dis;
     private JFrame frame;
@@ -15,109 +16,194 @@ public class RemoteDesktopClient {
     private BufferedImage currentImage;
     private int serverScreenWidth;
     private int serverScreenHeight;
-//TCP Connection
+    private final JTextField Ip4Address ;
+    private DataOutputStream dos;
+
+
+    //TCP Connection
     public static void main(String[] args) {
-       new RemoteDesktopClient().start();
+        new RemoteDesktopClient().setVisible(true);
+
+    }
+    public RemoteDesktopClient() {
+        // Tao JFrame quan ly client
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setSize(400, 200);
+        setLayout(new BorderLayout());
+
+        JPanel panel = new JPanel(new BorderLayout());
+        JTextArea chatArea = new JTextArea();
+        chatArea.setEditable(false);
+        panel.add(new JScrollPane(chatArea), BorderLayout.CENTER);
+
+        JPanel ipPanel = new JPanel(new FlowLayout());
+        Ip4Address = new JTextField(15);
+        JLabel ipLabel = new JLabel("IP Address: ");
+        JButton connectButton = new JButton("Connect");
+        connectButton.addActionListener(e -> {
+            try {
+                ConnectServer();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+
+        ipPanel.add(ipLabel);
+        ipPanel.add(Ip4Address);
+        ipPanel.add(connectButton);
+
+
+        JButton remoteButton = new JButton("Remote");
+        remoteButton.addActionListener(e -> {
+            try {
+                Remote();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+
+
+        JPanel inputPanel = new JPanel(new BorderLayout());
+        JTextField chatInput = new JTextField();
+        JButton sendChatButton = new JButton("Send Chat");
+        sendChatButton.addActionListener(e -> sendChatMessage());
+        inputPanel.add(chatInput, BorderLayout.CENTER);
+        inputPanel.add(sendChatButton, BorderLayout.EAST);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        JButton sendFileButton = new JButton("Send File");
+        sendFileButton.addActionListener(e -> sendFile());
+        JButton videoCallButton = new JButton("Video Call");
+        videoCallButton.addActionListener(e -> startVideoCall());
+        JButton callButton = new JButton("Call");
+        callButton.addActionListener(e -> startCall());
+        JButton audioButton = new JButton("Send Audio");
+        audioButton.addActionListener(e -> sendAudio());
+        JPanel northPanel = new JPanel(new BorderLayout());
+        northPanel.add(ipPanel, BorderLayout.NORTH);
+        northPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+        buttonPanel.add(remoteButton);
+        buttonPanel.add(sendFileButton);
+        buttonPanel.add(videoCallButton);
+        buttonPanel.add(callButton);
+        buttonPanel.add(audioButton);
+
+
+        add(panel, BorderLayout.CENTER);
+        add(inputPanel, BorderLayout.SOUTH);
+        add(northPanel, BorderLayout.NORTH);
+
     }
 
-    public void start() {
-        String ip = JOptionPane.showInputDialog("Nhập IP của server");
-        if (ip == null || ip.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "IP không hợp lệ");
-            return;
-        }
+    private void ConnectServer() throws IOException {
+        String ip = Ip4Address.getText();
+        socket = new Socket(ip, 12345);
+        dos = new DataOutputStream(socket.getOutputStream());
+        dis = new DataInputStream(socket.getInputStream());
+        serverScreenWidth = dis.readInt();
+        serverScreenHeight = dis.readInt();
+        System.out.println("Đã kết nối tới server");
+    }
 
-        try {
-            socket = new Socket(ip, 12345);
-            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-            dis = new DataInputStream(socket.getInputStream());
-            serverScreenWidth = dis.readInt();
-            serverScreenHeight = dis.readInt();
+    private void Remote() throws IOException {
 
-            System.out.println("Đã kết nối tới server");
-
-            frame = new JFrame("Remote Desktop Viewer");
-            label = new JLabel();
-            frame.setSize(800, 600);
-            frame.add(label);
-            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            frame.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    try {
-                        socket.close();
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
+        frame = new JFrame("Remote Desktop Viewer");
+        label = new JLabel();
+        frame.setSize(800, 600);
+        frame.add(label);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                try {
+                    socket.close();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
                 }
-            });
+            }
+        });
 
-            frame.setVisible(true);
+        frame.setVisible(true);
 
-            addMouseListeners(label, dos);
-            addKeyListeners(frame, dos);
+        addMouseListeners(label, dos);
+        addKeyListeners(frame, dos);
 
-            SwingWorker<Void, BufferedImage> worker = new SwingWorker<>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    try {
-                        while (!isCancelled()) {
-                            try {
-                                String type = dis.readUTF();
-                                if ("IMG".equals(type)) {
-                                    int length = dis.readInt();
-                                    byte[] imageBytes = new byte[length];
-                                    dis.readFully(imageBytes);
-                                    ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
-                                    BufferedImage image = ImageIO.read(bais);
-                                    publish(image);
-                                }
-                            } catch (EOFException | SocketException e) {
-                                System.out.println("Server đã đóng kết nối");
-                                break; // Thoát vòng lặp khi kết nối bị đóng
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                                break; // Thoát vòng lặp khi gặp lỗi khác
-                            }
-                        }
-                    } finally {
+        SwingWorker<Void, BufferedImage> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    while (!isCancelled()) {
                         try {
-                            socket.close();
+                            String type = dis.readUTF();
+                            if ("IMG".equals(type)) {
+                                int length = dis.readInt();
+                                byte[] imageBytes = new byte[length];
+                                dis.readFully(imageBytes);
+                                ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
+                                BufferedImage image = ImageIO.read(bais);
+                                publish(image);
+                            }
+                        } catch (EOFException | SocketException e) {
+                            System.out.println("Server đã đóng kết nối");
+                            break; // Thoát vòng lặp khi kết nối bị đóng
                         } catch (IOException e) {
                             e.printStackTrace();
+                            break; // Thoát vòng lặp khi gặp lỗi khác
                         }
                     }
-                    return null;
-                }
-
-                @Override
-                protected void process(java.util.List<BufferedImage> chunks) {
-                    currentImage = chunks.get(chunks.size() - 1);
-                    updateImage();
-                }
-
-                @Override
-                protected void done() {
+                } finally {
                     try {
                         socket.close();
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-            };
-            worker.execute();
-            frame.addComponentListener(new ComponentAdapter() {
-                @Override
-                public void componentResized(ComponentEvent e) {
-                    updateImage();
-                }
-            });
+                return null;
+            }
 
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(null, "Lỗi kết nối tới server: " + e.getMessage());
-            e.printStackTrace();
-        }
+            @Override
+            protected void process(java.util.List<BufferedImage> chunks) {
+                currentImage = chunks.get(chunks.size() - 1);
+                updateImage();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        worker.execute();
+        frame.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                updateImage();
+            }
+        });
+
     }
+
+    private void sendAudio() {
+    }
+
+    private void startCall() {
+    }
+
+    private void startVideoCall() {
+    }
+
+    private void sendFile() {
+    }
+
+    private void sendChatMessage() {
+    }
+
     private Point adjustMouseCoordinates(Point clientPoint) {
         Dimension frameSize = frame.getContentPane().getSize();
         int x = (int) (clientPoint.x * (serverScreenWidth / (double) frameSize.width));

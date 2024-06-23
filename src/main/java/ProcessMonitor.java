@@ -5,6 +5,7 @@ import oshi.software.os.OperatingSystem;
 import oshi.util.FormatUtil;
 import javax.swing.*;
 
+
 public class ProcessMonitor {
     private final OperatingSystem os;
     private final Map<Integer, Long> previousTimes;
@@ -85,30 +86,11 @@ public class ProcessMonitor {
         if (processName.length() > 9) {
             return processName.substring(0, 9);
         }
-        return processName;
+        String space = " ";
+        return processName + space.repeat(Math.max(0, 9 - processName.length()));
     }
 
     private void updateLabel(int labelIndex, String processName, double cpuLoad, long residentSetSize) {
-        String processNamePadded = "&nbsp;" + processName + "&nbsp;".repeat(9 - processName.length());
-
-        String residentSetSizePadded = "&nbsp;".repeat(9 - FormatUtil.formatBytes(residentSetSize).length())+FormatUtil.formatBytes(residentSetSize);
-
-
-        String htmlText = "<html>"
-                + "<style>"
-                + "table { border-spacing: 0; }"
-                + "td { padding: 0; padding-right: 14px;}"
-                + "</style>"
-                + "<table>"
-                + "<tr>"
-                + "<td style='text-align: right;'>" + processNamePadded + "</td>"
-                + "<td style='text-align: center; padding-right: 21px;'>" + String.format("%.1f", cpuLoad) + "</td>"
-                + "<td style='text-align: left;'>" + residentSetSizePadded + "</td>"
-                + "</tr>"
-                + "</table>"
-                + "</html>";
-
-
-        processListLabel[labelIndex].setText(String.format(htmlText));
+        processListLabel[labelIndex].setText(String.format(" %-9s %5.1f %12s", processName, cpuLoad,  FormatUtil.formatBytes(residentSetSize)));
     }
 }

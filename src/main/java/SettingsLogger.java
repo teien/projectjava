@@ -14,10 +14,10 @@ public class SettingsLogger {
                     
             {
               "Screen": {
-                              "width": 245,
+                              "width": 230,
                               "yc": 0,
                               "xc": 0,
-                              "height": 900,
+                              "height": 940,
                               "alwaysOnTop": false
                           },
                           "Style": {
@@ -27,9 +27,13 @@ public class SettingsLogger {
                               "fontSize1": 12,
                               "fontColor2": -13261,
                               "fontColor1": -1,
-                              "fontSize2": 16,
+                              "fontSize2": 14,
                               "opacity": 1
                           },
+                             "Chart": {
+                                  "chartWidth": 214
+                                  
+                              },
               "Show/Hide": {
                  "showSsdName": true,
                  "showNETWORKTitle": true,
