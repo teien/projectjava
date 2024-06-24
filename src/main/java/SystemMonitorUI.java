@@ -361,7 +361,7 @@ public class SystemMonitorUI extends JFrame {
         // Update weather if first time can not be done because of network issues
         if ((showNetwork) && (networkIPLabel.getText().equals(" IP: --"))) {
             checkUpdateNet.scheduleAtFixedRate(() -> {
-                SwingUtilities.invokeLater(SystemMonitorUI::initializeSystemInfo);
+              initializeSystemInfo();
                 updateWeatherInfo();
                 if (!networkIPLabel.getText().equals(" IP: --")) {
                     checkUpdateNet.shutdown();

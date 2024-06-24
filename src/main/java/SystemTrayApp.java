@@ -1,3 +1,6 @@
+import ConnectTCPClient_Server.RemoteDesktopClient;
+import ConnectTCPClient_Server.RemoteDesktopServer;
+
 import javax.swing.*;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
@@ -143,14 +146,14 @@ public class SystemTrayApp {
         updateNetwork.addActionListener(e -> SystemMonitorUI.initializeSystemInfo());
         remoteServer.addActionListener(e -> new Thread(() -> {
             try {
-                new RemoteDesktopClient();
+                 new RemoteDesktopServer().createAndShowGUI();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         }).start());
         remoteClient.addActionListener(e -> new Thread(() -> {
             try {
-                new RemoteDesktopServer().createAndShowGUI();
+                new RemoteDesktopClient().setVisible(true);
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
