@@ -7,9 +7,12 @@ import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.*;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.imageio.ImageIO;
 import javax.swing.*;
+
 
 public class RemoteDesktopServer {
     private ServerSocket serverRemoteSocket;
@@ -20,11 +23,13 @@ public class RemoteDesktopServer {
     private JTextArea chatArea;
     private JTextArea logArea;
     private JTextField chatField;
-    private final ConcurrentHashMap<Socket, DataOutputStream> clients = new ConcurrentHashMap<>();
     private ServerSocket serverFileSocket;
     private JCheckBox chatCheckBox;
     private JCheckBox remoteCheckBox;
     private JCheckBox fileCheckBox;
+    private final Map<Socket, DataOutputStream> clients = new ConcurrentHashMap<>();
+    private JButton sendFile;
+    private JButton sendButton;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new RemoteDesktopServer().createAndShowGUI());
@@ -32,7 +37,7 @@ public class RemoteDesktopServer {
 
     public void createAndShowGUI() {
         JFrame frame = new JFrame("Remote Desktop Server");
-        frame.setSize(500, 600);
+        frame.setSize(300, 600);
         frame.setLayout(new BorderLayout());
         frame.setResizable(false);
         frame.setLocationRelativeTo(null);
@@ -58,20 +63,30 @@ public class RemoteDesktopServer {
         fileCheckBox = new JCheckBox("File Transfer");
 
         stopButton.setEnabled(false);
-        startButton.setEnabled(false);
-        startButton.addActionListener(e -> startServer());
+        startButton.setEnabled(true);
+        startButton.addActionListener(e -> {
+            startServer();
+        });
         stopButton.addActionListener(e -> stopServer());
-        //StartButton.setEnabled(true) when at least one checkbox is selected
-        remoteCheckBox.addActionListener(e -> startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected()));
-        chatCheckBox.addActionListener(e -> startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected()));
-        fileCheckBox.addActionListener(e -> startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected()));
+
+        remoteCheckBox.setSelected(true);
+        chatCheckBox.setSelected(true);
+        fileCheckBox.setSelected(true);
+
+        remoteCheckBox.addActionListener(e -> {
+            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
+        });
+        chatCheckBox.addActionListener(e -> {
+            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
+        });
+        fileCheckBox.addActionListener(e -> {
+            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
+        });
 
 
         checkBoxPanel.add(remoteCheckBox);
         checkBoxPanel.add(chatCheckBox);
         checkBoxPanel.add(fileCheckBox);
-
-
 
         controlPanel.add(startButton);
         controlPanel.add(stopButton);
@@ -81,6 +96,7 @@ public class RemoteDesktopServer {
 
         logArea = new JTextArea(6, 10);
         logArea.setEditable(false);
+        logArea.setFont(new Font("JetBrains Mono Light", Font.ITALIC, 9));
 
         JScrollPane logScrollPane = new JScrollPane(logArea);
         logPanel.add(logScrollPane, BorderLayout.NORTH);
@@ -89,21 +105,28 @@ public class RemoteDesktopServer {
         JPanel chatPanel = new JPanel();
         chatPanel.setLayout(new BorderLayout());
 
-        chatArea = new JTextArea(20, 30);
+        chatArea = new JTextArea(20, 20);
         chatArea.setEditable(false);
+        chatArea.setFont(new Font("JetBrains Mono NL", Font.PLAIN, 11));
+
         JScrollPane chatScrollPane = new JScrollPane(chatArea);
         chatPanel.add(chatScrollPane, BorderLayout.CENTER);
         chatPanel.setBorder(BorderFactory.createTitledBorder("Chat"));
+
+
 
         JPanel inputPanel = new JPanel();
         inputPanel.setLayout(new BorderLayout());
 
         chatField = new JTextField(20);
-        JButton sendButton = new JButton("Send");
-        sendButton.addActionListener(e -> sendMessage());
+        sendButton = new JButton("Send");
+        sendFile = new JButton("File");
+
+
 
         inputPanel.add(chatField, BorderLayout.CENTER);
         inputPanel.add(sendButton, BorderLayout.EAST);
+        inputPanel.add(sendFile, BorderLayout.WEST);
 
         chatPanel.add(inputPanel, BorderLayout.SOUTH);
 
@@ -122,6 +145,9 @@ public class RemoteDesktopServer {
             isRunning = true;
             startButton.setEnabled(false);
             stopButton.setEnabled(true);
+            chatCheckBox.setEnabled(false);
+            remoteCheckBox.setEnabled(false);
+            fileCheckBox.setEnabled(false);
 
             new Thread(() -> {
                 try {
@@ -140,22 +166,34 @@ public class RemoteDesktopServer {
 
                     while (isRunning) {
                         try {
-                            Socket socket = serverRemoteSocket.accept();
-                            appendToLogArea("Client đã kết nối");
-                            new Thread(() -> handleRemoteClient(socket)).start();
+                            if (chatCheckBox.isSelected()) {
+                                // Chấp nhận kết nối từ client (Chat)
+                                Socket socket = serverChatSocket.accept();
+                                String clientAddress = socket.getInetAddress().getHostAddress();
+                                appendToLogArea("Client "+ clientAddress+" đã kết nối ChatServer");
+                                new Thread(() -> handleChatClient(socket)).start();}
+                            if (remoteCheckBox.isSelected()) {
+                                // Chấp nhận kết nối từ client (Remote Desktop)
+                                Socket socket = serverRemoteSocket.accept();
+                                String clientAddress = socket.getInetAddress().getHostAddress();
+                                appendToLogArea("Client "+ clientAddress+" đã kết nối RemoteServer");
+                                new Thread(() -> handleRemoteClient(socket)).start();
+                            }
+                            if (fileCheckBox.isSelected()) {
+                                // Chấp nhận kết nối từ client (File Transfer)
+                                Socket socket = serverFileSocket.accept();
+                                String clientAddress = socket.getInetAddress().getHostAddress();
+                                appendToLogArea("Client "+ clientAddress+" đã kết nối FileServer");
+                                new Thread(() -> handleFileClient(socket)).start();
+                            }
 
-                            Socket chatSocket = serverChatSocket.accept();
-                            appendToLogArea("Client đã kết nối ChatServer");
-                            new Thread(() -> handleChatClient(chatSocket)).start();
-
-                            Socket fileSocket = serverFileSocket.accept();
-                            appendToLogArea("Client đã kết nối FileServer");
-                            new Thread(() -> handleFileClient(fileSocket)).start();
-
+                        } catch (SocketException e) {
+                            System.out.println("Server đã đóng kết nối");
                         } catch (IOException e) {
                             if (isRunning) {
                                 e.printStackTrace();
                             }
+
                         }
                     }
                 } catch (IOException e) {
@@ -177,6 +215,7 @@ public class RemoteDesktopServer {
         worker.execute();
     }
     private void handleRemoteClient(Socket socket) {
+        String clientAddress = socket.getInetAddress().getHostAddress();
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() {
@@ -188,7 +227,7 @@ public class RemoteDesktopServer {
                     }
 
                 } catch (EOFException e) {
-                    System.out.println("Client đã ngắt kết nối");
+                    System.out.println("Client "+ clientAddress+" đã ngắt kết nối");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -214,6 +253,9 @@ public class RemoteDesktopServer {
             isRunning = false;
             startButton.setEnabled(true);
             stopButton.setEnabled(false);
+            chatCheckBox.setEnabled(true);
+            remoteCheckBox.setEnabled(true);
+            fileCheckBox.setEnabled(true);
 
             try {
                 if (serverRemoteSocket != null && !serverRemoteSocket.isClosed()) {
@@ -256,48 +298,44 @@ public class RemoteDesktopServer {
         });
     }
 
-    private void sendMessage() {
-        String message = chatField.getText().trim();
-        if (!message.isEmpty()) {
-            appendToChatArea("Server: " + message);
-            broadcastMessage("Server: " + message);
-            chatField.setText("");
-        }
-    }
 
-    private void broadcastMessage(String message) {
-        for (DataOutputStream dos : clients.values()) {
-            try {
-                dos.writeUTF(message);
-                dos.flush();
-            } catch (SocketException e) {
-                System.out.println("Client đã ngắt kết nối");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
+
+
 
     class FileHandler extends Thread {
         private final Socket socket;
+        private static final boolean isRunning = true;
 
         public FileHandler(Socket socket) {
             this.socket = socket;
+            sendFile.addActionListener(e -> {
+                new Thread(() -> {
+                    try {
+                        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                        sendFile(dos);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }).start();
+            });
         }
 
         @Override
         public void run() {
+            String clientAddress = socket.getInetAddress().getHostAddress();
             try (DataInputStream dis = new DataInputStream(socket.getInputStream());
-                 DataOutputStream dos = new DataOutputStream(socket.getOutputStream()))
-                {
+                 DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
+
+                clients.put(socket, dos);
+
                 while (isRunning && !socket.isClosed()) {
                     try {
                         String type = dis.readUTF();
                         if ("FILE_SEND".equals(type)) {
-                            receiveFile(dis); // Cập nhật đường dẫn lưu file tương ứng
+                            receiveFile(dis);
                         }
                     } catch (EOFException e) {
-                        System.out.println("Client đã ngắt kết nối");
+                        System.out.println("Client " + clientAddress + " đã ngắt kết nối");
                         break;
                     } catch (SocketException e) {
                         System.out.println("Server đã đóng kết nối");
@@ -317,9 +355,38 @@ public class RemoteDesktopServer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                appendToLogArea("Client đã ngắt kết nối");
+                appendToLogArea("Client " + clientAddress + " đã ngắt kết nối");
             }
         }
+
+        private void sendFile(DataOutputStream dos) {
+            try {
+                JFileChooser fileChooser = new JFileChooser();
+                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                int result = fileChooser.showOpenDialog(null);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    File selectedFile = fileChooser.getSelectedFile();
+
+                    dos.writeUTF("FILE_RECEIVE"); // Gửi thông báo cho client rằng sẽ gửi file
+                    dos.writeUTF(selectedFile.getName()); // Gửi tên file
+                    dos.writeLong(selectedFile.length()); // Gửi kích thước của file
+
+                    try (FileInputStream fis = new FileInputStream(selectedFile)) {
+                        byte[] buffer = new byte[4096];
+                        int bytesRead;
+                        while ((bytesRead = fis.read(buffer)) != -1) {
+                            dos.write(buffer, 0, bytesRead); // Gửi nội dung của file
+                        }
+                    }
+
+                    dos.flush();
+                    appendToLogArea("Đã gửi file: " + selectedFile.getName() + " tới client " + socket.getInetAddress().getHostAddress());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
 
         private void receiveFile(DataInputStream dis) {
             try {
@@ -337,12 +404,13 @@ public class RemoteDesktopServer {
                         remaining -= read;
                     }
                 }
-                appendToLogArea("Đã nhận file: " + fileName+ " - " + downloadsPath);
+                appendToLogArea("Đã nhận file: " + fileName + " - " + downloadsPath);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
+
     class RemoteClientHandler extends Thread {
         private final Socket socket;
         private final String requestType;
@@ -363,6 +431,7 @@ public class RemoteDesktopServer {
 
         @Override
         public void run() {
+            String clientAddress = socket.getInetAddress().getHostAddress();
             try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
                  DataInputStream dis = new DataInputStream(socket.getInputStream())) {
                 clients.put(socket, dos);
@@ -388,7 +457,7 @@ public class RemoteDesktopServer {
                                 Thread.sleep(10);
                             }
                         } catch (SocketException e) {
-                            System.out.println("Client đã ngắt kết nối");
+                            System.out.println("Client "+clientAddress+" đã ngắt kết nối");
                         } catch (IOException | InterruptedException e) {
                             if (isRunning) {
                                 e.printStackTrace();
@@ -409,7 +478,7 @@ public class RemoteDesktopServer {
                                 handleControlAction(action, x, y, data);
                             }
                         } catch (EOFException e) {
-                            System.out.println("Client đã ngắt kết nối");
+                            System.out.println("Client "+clientAddress+" đã ngắt kết nối");
                             break;
                         } catch (SocketException e) {
                             System.out.println("Server đã đóng kết nối");
@@ -431,7 +500,7 @@ public class RemoteDesktopServer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                appendToLogArea("Client đã ngắt kết nối");
+                appendToLogArea("Client "+clientAddress+" đã ngắt kết nối");
             }
         }
 
@@ -467,6 +536,7 @@ public class RemoteDesktopServer {
             this.socket = socket;
             DataInputStream tempDis = null;
             DataOutputStream tempDos = null;
+            sendButton.addActionListener(e -> sendMessage());
             try {
                 tempDis = new DataInputStream(socket.getInputStream());
                 tempDos = new DataOutputStream(socket.getOutputStream());
@@ -480,6 +550,7 @@ public class RemoteDesktopServer {
         @Override
         public void run() {
             clients.put(socket, dos);
+            String clientAddress = socket.getInetAddress().getHostAddress();
             try {
                 while (isRunning && !socket.isClosed()) {
                     try {
@@ -487,7 +558,7 @@ public class RemoteDesktopServer {
                         appendToChatArea(message);
                         broadcastMessage(message);
                     } catch (EOFException e) {
-                        System.out.println("Client đã ngắt kết nối");
+                        System.out.println("Client " + clientAddress + " đã ngắt kết nối");
                         break;
                     } catch (SocketException e) {
                         System.out.println("Server đã đóng kết nối");
@@ -506,8 +577,34 @@ public class RemoteDesktopServer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                appendToLogArea("Client đã ngắt kết nối");
+                appendToLogArea("Client " + clientAddress + " đã ngắt kết nối");
+            }
+        }
+        private void broadcastMessage(String message) {
+            Iterator<Map.Entry<Socket, DataOutputStream>> iterator = clients.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<Socket, DataOutputStream> entry = iterator.next();
+                DataOutputStream dos = entry.getValue();
+                try {
+                    dos.writeUTF(message);
+                    dos.flush();
+                } catch (SocketException e) {
+                    System.out.println("Client " + entry.getKey() + " đã ngắt kết nối");
+                    iterator.remove();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        private void sendMessage() {
+            String message = chatField.getText().trim();
+            if (!message.isEmpty()) {
+                appendToChatArea("Server: " + message);
+                broadcastMessage("Server: " + message);
+                chatField.setText("");
             }
         }
     }
+
+
 }
