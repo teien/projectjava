@@ -639,13 +639,16 @@ public class SystemMonitorUI extends JFrame {
                         settingsUI.isProcessSelected()
                 );
                 ui.setVisible(true);
-                new SystemTrayApp();
+
+
                 WinDef.HWND hwnd = getHWnd(ui);
                 int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
                 exStyle |= WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
                 User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
             }
         });
+        // new SystemTrayApp(); chay thread rieng
+        new Thread(SystemTrayApp::new).start();
     }
 
 }
