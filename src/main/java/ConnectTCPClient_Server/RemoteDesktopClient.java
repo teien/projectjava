@@ -127,7 +127,6 @@ public class RemoteDesktopClient extends JFrame {
         JButton callButton = new JButton("Call");
         callButton.addActionListener(e -> startCall());
 
-
         JPanel northPanel = new JPanel(new BorderLayout());
         northPanel.add(ipPanel, BorderLayout.NORTH);
         northPanel.add(buttonPanel, BorderLayout.SOUTH);
@@ -137,13 +136,11 @@ public class RemoteDesktopClient extends JFrame {
         buttonPanel.add(videoCallButton);
         buttonPanel.add(callButton);
 
-
         add(chatPanel, BorderLayout.CENTER);
         add(inputPanel, BorderLayout.SOUTH);
         add(northPanel, BorderLayout.NORTH);
         setFontButton(connectButton, disconnectButton, remoteButton, sendFileButton, videoCallButton, callButton,  sendChatButton);
         setButtonSize(connectButton, disconnectButton, remoteButton, sendFileButton, videoCallButton, callButton,  sendChatButton);
-
     }
 
     private @NotNull JButton getjButton() {
@@ -255,7 +252,20 @@ public class RemoteDesktopClient extends JFrame {
             throw new IOException("Lỗi khi kết nối tới server truyền file: " + e.getMessage());
         }
     }
-
+    private void connectToChatServer(String ip) throws IOException {
+        try {
+            chatSocket = new Socket(ip, 49151);
+            chatDos = new DataOutputStream(new BufferedOutputStream(chatSocket.getOutputStream()));
+            chatDis = new DataInputStream(new BufferedInputStream(chatSocket.getInputStream()));
+            System.out.println("Đã kết nối tới server chat");
+        } catch (ConnectException e) {
+            setJButton(sendChatButton);
+            throw new ConnectException("Không thể kết nối tới server chat tại " + ip + ": " + e.getMessage());
+        } catch (IOException e) {
+            setJButton(sendChatButton);
+            throw new IOException("Lỗi khi kết nối tới server chat: " + e.getMessage());
+        }
+    }
     private void connectToRemoteServer(String ip) throws IOException {
         try {
             socket = new Socket(ip, 49150);
@@ -585,20 +595,7 @@ public class RemoteDesktopClient extends JFrame {
         frame.addKeyListener(keyAdapter);
     }
     //
-    private void connectToChatServer(String ip) throws IOException {
-        try {
-            chatSocket = new Socket(ip, 49151);
-            chatDos = new DataOutputStream(new BufferedOutputStream(chatSocket.getOutputStream()));
-            chatDis = new DataInputStream(new BufferedInputStream(chatSocket.getInputStream()));
-            System.out.println("Đã kết nối tới server chat");
-        } catch (ConnectException e) {
-            setJButton(sendChatButton);
-            throw new ConnectException("Không thể kết nối tới server chat tại " + ip + ": " + e.getMessage());
-        } catch (IOException e) {
-            setJButton(sendChatButton);
-            throw new IOException("Lỗi khi kết nối tới server chat: " + e.getMessage());
-        }
-    }
+
 
     private void sendChatMessage() throws IOException {
         String message = chatInput.getText();

@@ -1,5 +1,9 @@
 package ConnectTCPClient_Server;
 
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.Java2DFrameConverter;
+import org.bytedeco.javacv.OpenCVFrameConverter;
+
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.WindowAdapter;
@@ -31,7 +35,6 @@ public class RemoteDesktopServer {
     private static final Map<Socket, DataOutputStream> fileClients = new ConcurrentHashMap<>();
     private static final Map<Socket, DataOutputStream> chatClients = new ConcurrentHashMap<>();
 
-    private JButton sendFile;
     private JButton sendButton;
 
     public static void main(String[] args) {
@@ -124,7 +127,7 @@ public class RemoteDesktopServer {
 
         chatField = new JTextField(20);
         sendButton = new JButton("Send");
-        sendFile = new JButton("File");
+        JButton sendFile = new JButton("File");
 
         sendFile.addActionListener(e -> {
             new Thread(() -> {
@@ -291,8 +294,23 @@ public class RemoteDesktopServer {
                     e.printStackTrace();
                 }
             }
-
             clients.clear();
+            for (Socket socket : chatClients.keySet()) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            chatClients.clear();
+            for (Socket socket : fileClients.keySet()) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            fileClients.clear();
         }
     }
 
@@ -318,21 +336,21 @@ public class RemoteDesktopServer {
             for (DataOutputStream dos : fileClients.values()) {
                 sendFile(dos, selectedFile);
             }
-            appendToLogArea("Đã gửi file: " + selectedFile.getName() + " tới tất cả các client.");
+            appendToLogArea("Đã gửi file: " + selectedFile.getName() + " tới client.");
         }
     }
 
     private void sendFile(DataOutputStream dos, File file) {
         try {
-            dos.writeUTF("FILE_RECEIVE"); // Gửi thông báo cho client rằng sẽ gửi file
-            dos.writeUTF(file.getName()); // Gửi tên file
-            dos.writeLong(file.length()); // Gửi kích thước của file
+            dos.writeUTF("FILE_RECEIVE");
+            dos.writeUTF(file.getName());
+            dos.writeLong(file.length());
 
             try (FileInputStream fis = new FileInputStream(file)) {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
                 while ((bytesRead = fis.read(buffer)) != -1) {
-                    dos.write(buffer, 0, bytesRead); // Gửi nội dung của file
+                    dos.write(buffer, 0, bytesRead);
                 }
             }
 
@@ -343,6 +361,7 @@ public class RemoteDesktopServer {
     }
 
 
+//////////////////////////// FileHandler, RemoteClientHandler, ChatHandler ////////////////////////////
 
 
     public class FileHandler extends Thread {
@@ -450,9 +469,15 @@ public class RemoteDesktopServer {
 
                         // Thread để gửi ảnh màn hình
                         new Thread(() -> {
+                            OpenCVFrameConverter.ToIplImage converter = new OpenCVFrameConverter.ToIplImage();
+                            Java2DFrameConverter java2DConverter = new Java2DFrameConverter();
+
                             try {
                                 while (isRunning && !socket.isClosed()) {
                                     BufferedImage screenCapture = robot.createScreenCapture(screenRect);
+                                    Frame frame = java2DConverter.convert(screenCapture);
+                                    org.bytedeco.opencv.opencv_core.Mat mat = converter.convertToMat(frame);
+
                                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                                     ImageIO.write(screenCapture, "jpg", baos);
                                     byte[] imageBytes = baos.toByteArray();
