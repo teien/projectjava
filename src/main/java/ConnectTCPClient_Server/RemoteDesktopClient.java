@@ -92,7 +92,6 @@ public class RemoteDesktopClient extends JFrame {
                     connectToServerInBackground();
                     Thread.sleep(500);
                 }
-
                 startRemote();
 
             } catch (IOException ex) {
@@ -383,6 +382,7 @@ public class RemoteDesktopClient extends JFrame {
                 updateImage();
             }
         });
+        frame.repaint();
     }
 
 

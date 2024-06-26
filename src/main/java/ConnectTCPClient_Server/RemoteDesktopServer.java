@@ -28,6 +28,9 @@ public class RemoteDesktopServer {
     private JCheckBox remoteCheckBox;
     private JCheckBox fileCheckBox;
     private final Map<Socket, DataOutputStream> clients = new ConcurrentHashMap<>();
+    private static final Map<Socket, DataOutputStream> fileClients = new ConcurrentHashMap<>();
+    private static final Map<Socket, DataOutputStream> chatClients = new ConcurrentHashMap<>();
+
     private JButton sendFile;
     private JButton sendButton;
 
@@ -67,6 +70,7 @@ public class RemoteDesktopServer {
         startButton.addActionListener(e -> {
             startServer();
         });
+
         stopButton.addActionListener(e -> stopServer());
 
         remoteCheckBox.setSelected(true);
@@ -122,7 +126,15 @@ public class RemoteDesktopServer {
         sendButton = new JButton("Send");
         sendFile = new JButton("File");
 
-
+        sendFile.addActionListener(e -> {
+            new Thread(() -> {
+                try {
+                    sendFileToAllClients();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }).start();
+        });
 
         inputPanel.add(chatField, BorderLayout.CENTER);
         inputPanel.add(sendButton, BorderLayout.EAST);
@@ -297,27 +309,50 @@ public class RemoteDesktopServer {
             chatArea.setCaretPosition(chatArea.getDocument().getLength());
         });
     }
+    private void sendFileToAllClients() throws IOException {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        int result = fileChooser.showOpenDialog(null);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            for (DataOutputStream dos : fileClients.values()) {
+                sendFile(dos, selectedFile);
+            }
+            appendToLogArea("Đã gửi file: " + selectedFile.getName() + " tới tất cả các client.");
+        }
+    }
+
+    private void sendFile(DataOutputStream dos, File file) {
+        try {
+            dos.writeUTF("FILE_RECEIVE"); // Gửi thông báo cho client rằng sẽ gửi file
+            dos.writeUTF(file.getName()); // Gửi tên file
+            dos.writeLong(file.length()); // Gửi kích thước của file
+
+            try (FileInputStream fis = new FileInputStream(file)) {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    dos.write(buffer, 0, bytesRead); // Gửi nội dung của file
+                }
+            }
+
+            dos.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 
 
 
-
-    class FileHandler extends Thread {
+    public class FileHandler extends Thread {
         private final Socket socket;
         private static final boolean isRunning = true;
 
+
         public FileHandler(Socket socket) {
             this.socket = socket;
-            sendFile.addActionListener(e -> {
-                new Thread(() -> {
-                    try {
-                        DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-                        sendFile(dos);
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
-                }).start();
-            });
+
         }
 
         @Override
@@ -326,7 +361,7 @@ public class RemoteDesktopServer {
             try (DataInputStream dis = new DataInputStream(socket.getInputStream());
                  DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
 
-                clients.put(socket, dos);
+                fileClients.put(socket, dos);
 
                 while (isRunning && !socket.isClosed()) {
                     try {
@@ -355,37 +390,11 @@ public class RemoteDesktopServer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                fileClients.remove(socket);
                 appendToLogArea("Client " + clientAddress + " đã ngắt kết nối");
             }
         }
 
-        private void sendFile(DataOutputStream dos) {
-            try {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                int result = fileChooser.showOpenDialog(null);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    File selectedFile = fileChooser.getSelectedFile();
-
-                    dos.writeUTF("FILE_RECEIVE"); // Gửi thông báo cho client rằng sẽ gửi file
-                    dos.writeUTF(selectedFile.getName()); // Gửi tên file
-                    dos.writeLong(selectedFile.length()); // Gửi kích thước của file
-
-                    try (FileInputStream fis = new FileInputStream(selectedFile)) {
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        while ((bytesRead = fis.read(buffer)) != -1) {
-                            dos.write(buffer, 0, bytesRead); // Gửi nội dung của file
-                        }
-                    }
-
-                    dos.flush();
-                    appendToLogArea("Đã gửi file: " + selectedFile.getName() + " tới client " + socket.getInetAddress().getHostAddress());
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
 
 
         private void receiveFile(DataInputStream dis) {
@@ -410,201 +419,202 @@ public class RemoteDesktopServer {
             }
         }
     }
+        class RemoteClientHandler extends Thread {
+            private final Socket socket;
+            private final String requestType;
+            private Robot robot;
+            private Rectangle screenRect;
 
-    class RemoteClientHandler extends Thread {
-        private final Socket socket;
-        private final String requestType;
-        private Robot robot;
-        private Rectangle screenRect;
+            public RemoteClientHandler(Socket socket, String requestType) {
+                this.socket = socket;
+                this.requestType = requestType;
+                try {
+                    robot = new Robot();
+                    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                    screenRect = new Rectangle(screenSize);
+                } catch (AWTException e) {
+                    e.printStackTrace();
+                }
+            }
 
-        public RemoteClientHandler(Socket socket, String requestType) {
-            this.socket = socket;
-            this.requestType = requestType;
-            try {
-                robot = new Robot();
-                Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-                screenRect = new Rectangle(screenSize);
-            } catch (AWTException e) {
-                e.printStackTrace();
+            @Override
+            public void run() {
+                String clientAddress = socket.getInetAddress().getHostAddress();
+                try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                     DataInputStream dis = new DataInputStream(socket.getInputStream())) {
+                    clients.put(socket, dos);
+                    if ("REMOTE_DESKTOP".equalsIgnoreCase(requestType)) {
+                        dos.writeInt(screenRect.width);
+                        dos.writeInt(screenRect.height);
+                        dos.flush();
+
+                        // Thread để gửi ảnh màn hình
+                        new Thread(() -> {
+                            try {
+                                while (isRunning && !socket.isClosed()) {
+                                    BufferedImage screenCapture = robot.createScreenCapture(screenRect);
+                                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                    ImageIO.write(screenCapture, "jpg", baos);
+                                    byte[] imageBytes = baos.toByteArray();
+
+                                    dos.writeUTF("IMG");
+                                    dos.writeInt(imageBytes.length);
+                                    dos.write(imageBytes);
+                                    dos.flush();
+
+                                    Thread.sleep(10);
+                                }
+                            } catch (SocketException e) {
+                                System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+                            } catch (IOException | InterruptedException e) {
+                                if (isRunning) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }).start();
+
+                        // Nhận các lệnh điều khiển từ client
+                        while (isRunning && !socket.isClosed()) {
+                            try {
+                                String type = dis.readUTF();
+                                if ("CTL".equals(type)) {
+                                    String action = dis.readUTF();
+                                    int x = dis.readInt();
+                                    int y = dis.readInt();
+                                    int data = dis.readInt();
+
+                                    handleControlAction(action, x, y, data);
+                                }
+                            } catch (EOFException e) {
+                                System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+                                break;
+                            } catch (SocketException e) {
+                                System.out.println("Server đã đóng kết nối");
+                                break;
+                            } catch (IOException | InterruptedException e) {
+                                if (isRunning) {
+                                    e.printStackTrace();
+                                }
+                                break;
+                            }
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    clients.remove(socket);
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    appendToLogArea("Client " + clientAddress + " đã ngắt kết nối");
+                }
+            }
+
+            private void handleControlAction(String action, int x, int y, int data) throws InterruptedException {
+                switch (action) {
+                    case "MOUSE_PRESS":
+                        robot.mouseMove(x, y);
+                        robot.mousePress(InputEvent.getMaskForButton(data));
+                        break;
+                    case "MOUSE_RELEASE":
+                        robot.mouseMove(x, y);
+                        robot.mouseRelease(InputEvent.getMaskForButton(data));
+                        break;
+                    case "MOVE":
+                        robot.mouseMove(x, y);
+                        break;
+                    case "PRESS":
+                        robot.keyPress(data);
+                        break;
+                    case "RELEASE":
+                        robot.keyRelease(data);
+                        break;
+                }
             }
         }
 
-        @Override
-        public void run() {
-            String clientAddress = socket.getInetAddress().getHostAddress();
-            try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-                 DataInputStream dis = new DataInputStream(socket.getInputStream())) {
-                clients.put(socket, dos);
-                if ("REMOTE_DESKTOP".equalsIgnoreCase(requestType)) {
-                    dos.writeInt(screenRect.width);
-                    dos.writeInt(screenRect.height);
-                    dos.flush();
+        class ChatHandler extends Thread {
+            private final Socket socket;
+            private final DataInputStream dis;
+            private final DataOutputStream dos;
 
-                    // Thread để gửi ảnh màn hình
-                    new Thread(() -> {
-                        try {
-                            while (isRunning && !socket.isClosed()) {
-                                BufferedImage screenCapture = robot.createScreenCapture(screenRect);
-                                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                                ImageIO.write(screenCapture, "jpg", baos);
-                                byte[] imageBytes = baos.toByteArray();
+            public ChatHandler(Socket socket) {
+                this.socket = socket;
+                DataInputStream tempDis = null;
+                DataOutputStream tempDos = null;
+                sendButton.addActionListener(e -> sendMessage());
+                try {
+                    tempDis = new DataInputStream(socket.getInputStream());
+                    tempDos = new DataOutputStream(socket.getOutputStream());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                dis = tempDis;
+                dos = tempDos;
+            }
 
-                                dos.writeUTF("IMG");
-                                dos.writeInt(imageBytes.length);
-                                dos.write(imageBytes);
-                                dos.flush();
-
-                                Thread.sleep(10);
-                            }
-                        } catch (SocketException e) {
-                            System.out.println("Client "+clientAddress+" đã ngắt kết nối");
-                        } catch (IOException | InterruptedException e) {
-                            if (isRunning) {
-                                e.printStackTrace();
-                            }
-                        }
-                    }).start();
-
-                    // Nhận các lệnh điều khiển từ client
+            @Override
+            public void run() {
+                chatClients.put(socket, dos);
+                String clientAddress = socket.getInetAddress().getHostAddress();
+                try {
                     while (isRunning && !socket.isClosed()) {
                         try {
-                            String type = dis.readUTF();
-                            if ("CTL".equals(type)) {
-                                String action = dis.readUTF();
-                                int x = dis.readInt();
-                                int y = dis.readInt();
-                                int data = dis.readInt();
-
-                                handleControlAction(action, x, y, data);
-                            }
+                            String message = dis.readUTF();
+                            appendToChatArea(message);
+                            broadcastMessage(message);
                         } catch (EOFException e) {
-                            System.out.println("Client "+clientAddress+" đã ngắt kết nối");
+                            System.out.println("Client " + clientAddress + " đã ngắt kết nối");
                             break;
                         } catch (SocketException e) {
                             System.out.println("Server đã đóng kết nối");
                             break;
-                        } catch (IOException | InterruptedException e) {
+                        } catch (IOException e) {
                             if (isRunning) {
                                 e.printStackTrace();
                             }
                             break;
                         }
                     }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                clients.remove(socket);
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                appendToLogArea("Client "+clientAddress+" đã ngắt kết nối");
-            }
-        }
-
-        private void handleControlAction(String action, int x, int y, int data) throws InterruptedException {
-            switch (action) {
-                case "MOUSE_PRESS":
-                    robot.mouseMove(x, y);
-                    robot.mousePress(InputEvent.getMaskForButton(data));
-                    break;
-                case "MOUSE_RELEASE":
-                    robot.mouseMove(x, y);
-                    robot.mouseRelease(InputEvent.getMaskForButton(data));
-                    break;
-                case "MOVE":
-                    robot.mouseMove(x, y);
-                    break;
-                case "PRESS":
-                    robot.keyPress(data);
-                    break;
-                case "RELEASE":
-                    robot.keyRelease(data);
-                    break;
-            }
-        }
-    }
-
-    class ChatHandler extends Thread {
-        private final Socket socket;
-        private final DataInputStream dis;
-        private final DataOutputStream dos;
-
-        public ChatHandler(Socket socket) {
-            this.socket = socket;
-            DataInputStream tempDis = null;
-            DataOutputStream tempDos = null;
-            sendButton.addActionListener(e -> sendMessage());
-            try {
-                tempDis = new DataInputStream(socket.getInputStream());
-                tempDos = new DataOutputStream(socket.getOutputStream());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            dis = tempDis;
-            dos = tempDos;
-        }
-
-        @Override
-        public void run() {
-            clients.put(socket, dos);
-            String clientAddress = socket.getInetAddress().getHostAddress();
-            try {
-                while (isRunning && !socket.isClosed()) {
+                } finally {
+                    chatClients.remove(socket);
                     try {
-                        String message = dis.readUTF();
-                        appendToChatArea(message);
-                        broadcastMessage(message);
-                    } catch (EOFException e) {
-                        System.out.println("Client " + clientAddress + " đã ngắt kết nối");
-                        break;
-                    } catch (SocketException e) {
-                        System.out.println("Server đã đóng kết nối");
-                        break;
+                        socket.close();
                     } catch (IOException e) {
-                        if (isRunning) {
-                            e.printStackTrace();
-                        }
-                        break;
+                        e.printStackTrace();
+                    }
+                    appendToLogArea("Client " + clientAddress + " đã ngắt kết nối");
+                }
+            }
+
+            private void broadcastMessage(String message) {
+                Iterator<Map.Entry<Socket, DataOutputStream>> iterator = chatClients.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    Map.Entry<Socket, DataOutputStream> entry = iterator.next();
+                    DataOutputStream dos = entry.getValue();
+                    try {
+                        dos.writeUTF(message);
+                        dos.flush();
+                    } catch (SocketException e) {
+                        System.out.println("Client " + entry.getKey() + " đã ngắt kết nối");
+                        iterator.remove();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
                 }
-            } finally {
-                clients.remove(socket);
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                appendToLogArea("Client " + clientAddress + " đã ngắt kết nối");
             }
-        }
-        private void broadcastMessage(String message) {
-            Iterator<Map.Entry<Socket, DataOutputStream>> iterator = clients.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<Socket, DataOutputStream> entry = iterator.next();
-                DataOutputStream dos = entry.getValue();
-                try {
-                    dos.writeUTF(message);
-                    dos.flush();
-                } catch (SocketException e) {
-                    System.out.println("Client " + entry.getKey() + " đã ngắt kết nối");
-                    iterator.remove();
-                } catch (IOException e) {
-                    e.printStackTrace();
+
+            private void sendMessage() {
+                String message = chatField.getText().trim();
+                if (!message.isEmpty()) {
+                    appendToChatArea("Server: " + message);
+                    broadcastMessage("Server: " + message);
+                    chatField.setText("");
                 }
             }
         }
-        private void sendMessage() {
-            String message = chatField.getText().trim();
-            if (!message.isEmpty()) {
-                appendToChatArea("Server: " + message);
-                broadcastMessage("Server: " + message);
-                chatField.setText("");
-            }
-        }
-    }
 
 
 }
