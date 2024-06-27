@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 import javax.swing.*;
@@ -47,7 +48,7 @@ public class RemoteDesktopServer {
 
     public void createAndShowGUI() {
         JFrame frame = new JFrame("Remote Desktop Server");
-        frame.setSize(300, 600);
+        frame.setSize(400, 600);
         frame.setLayout(new BorderLayout());
         frame.setResizable(false);
         frame.setLocationRelativeTo(null);
@@ -184,70 +185,119 @@ public class RemoteDesktopServer {
             remoteCheckBox.setEnabled(false);
             fileCheckBox.setEnabled(false);
             audioCheckBox.setEnabled(false);
-            new Thread(() -> {
-                try {
-                    if (chatCheckBox.isSelected()) {
-                        serverChatSocket = new ServerSocket(49151);
-                        appendToLogArea("Server Chat đang chờ kết nối...");
-                    }
-                    if (remoteCheckBox.isSelected()) {
-                        serverRemoteSocket = new ServerSocket(49150);
-                        appendToLogArea("Server Remote Desktop đang chờ kết nối...");
-                    }
-                    if (fileCheckBox.isSelected()) {
-                        serverFileSocket = new ServerSocket(49152);
-                        appendToLogArea("Server File Transfer đang chờ kết nối...");
-                    }
-                    if (audioCheckBox.isSelected()) {
-                        serverAudioSocket = new ServerSocket(49149);
-                        appendToLogArea("Server Audio đang chờ kết nối...");
-                    }
+            appendToLogArea("Server đang khởi động...");
 
-                    while (isRunning) {
-                        try {
-                            if (chatCheckBox.isSelected()) {
-                                // Chấp nhận kết nối từ client (Chat)
-                                Socket socket = serverChatSocket.accept();
-                                String clientAddress = socket.getInetAddress().getHostAddress();
-                                appendToLogArea("Client " + clientAddress + " đã kết nối ChatServer");
-                                new Thread(() -> handleChatClient(socket)).start();
-                            }
-                            if (remoteCheckBox.isSelected()) {
-                                // Chấp nhận kết nối từ client (Remote Desktop)
-                                Socket socket = serverRemoteSocket.accept();
-                                String clientAddress = socket.getInetAddress().getHostAddress();
-                                appendToLogArea("Client " + clientAddress + " đã kết nối RemoteServer");
-                                new Thread(() -> handleRemoteClient(socket)).start();
-                            }
-                            if (fileCheckBox.isSelected()) {
-                                // Chấp nhận kết nối từ client (File Transfer)
-                                Socket socket = serverFileSocket.accept();
-                                String clientAddress = socket.getInetAddress().getHostAddress();
-                                appendToLogArea("Client " + clientAddress + " đã kết nối FileServer");
-                                new Thread(() -> handleFileClient(socket)).start();
-                            }
-                            if (audioCheckBox.isSelected()) {
-                                Socket socket = serverAudioSocket.accept();
-                                String clientAddress = socket.getInetAddress().getHostAddress();
-                                appendToLogArea("Client " + clientAddress + " đã kết nối AudioServer");
-                                new Thread(() -> handleAudioClient(socket)).start();
-                            }
-
-                        } catch (SocketException e) {
-                            System.out.println("Server đã đóng kết nối");
-                        } catch (IOException e) {
-                            if (isRunning) {
-                                e.printStackTrace();
-                            }
-
-                        }
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
+            if (chatCheckBox.isSelected()) {
+                new Thread(this::startChatServer).start();
+            }
+            if (remoteCheckBox.isSelected()) {
+                new Thread(this::startRemoteServer).start();
+            }
+            if (fileCheckBox.isSelected()) {
+                new Thread(this::startFileServer).start();
+            }
+            if (audioCheckBox.isSelected()) {
+                new Thread(this::startAudioServer).start();
+            }
         }
     }
+
+    private void startChatServer() {
+        try {
+            serverChatSocket = new ServerSocket(49151);
+            appendToLogArea("Server Chat đang chờ kết nối...");
+            while (isRunning) {
+                try {
+                    Socket socket = serverChatSocket.accept();
+                    String clientAddress = socket.getInetAddress().getHostAddress();
+                    appendToLogArea("Client " + clientAddress + " đã kết nối ChatServer");
+                    new Thread(() -> handleChatClient(socket)).start();
+                } catch (SocketException e) {
+                    System.out.println("ChatServer đã đóng kết nối");
+                } catch (IOException e) {
+                    if (isRunning) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            appendToLogArea("Lỗi khi khởi tạo ChatServer: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void startRemoteServer() {
+        try {
+            serverRemoteSocket = new ServerSocket(49150);
+            appendToLogArea("Server Remote Desktop đang chờ kết nối...");
+            while (isRunning) {
+                try {
+                    Socket socket = serverRemoteSocket.accept();
+                    String clientAddress = socket.getInetAddress().getHostAddress();
+                    appendToLogArea("Client " + clientAddress + " đã kết nối RemoteServer");
+                    new Thread(() -> handleRemoteClient(socket)).start();
+                } catch (SocketException e) {
+                    System.out.println("RemoteServer đã đóng kết nối");
+                } catch (IOException e) {
+                    if (isRunning) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            appendToLogArea("Lỗi khi khởi tạo RemoteServer: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void startFileServer() {
+        try {
+            serverFileSocket = new ServerSocket(49152);
+            appendToLogArea("Server File Transfer đang chờ kết nối...");
+            while (isRunning) {
+                try {
+                    Socket socket = serverFileSocket.accept();
+                    String clientAddress = socket.getInetAddress().getHostAddress();
+                    appendToLogArea("Client " + clientAddress + " đã kết nối FileServer");
+                    new Thread(() -> handleFileClient(socket)).start();
+                } catch (SocketException e) {
+                    System.out.println("FileServer đã đóng kết nối");
+                } catch (IOException e) {
+                    if (isRunning) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            appendToLogArea("Lỗi khi khởi tạo FileServer: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void startAudioServer() {
+        try {
+            serverAudioSocket = new ServerSocket(49149);
+            appendToLogArea("Server Audio đang chờ kết nối...");
+            while (isRunning) {
+                try {
+                    Socket socket = serverAudioSocket.accept();
+                    String clientAddress = socket.getInetAddress().getHostAddress();
+                    appendToLogArea("Client " + clientAddress + " đã kết nối AudioServer");
+                    new Thread(() -> handleAudioClient(socket)).start();
+                } catch (SocketException e) {
+                    System.out.println("AudioServer đã đóng kết nối");
+                } catch (IOException e) {
+                    if (isRunning) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            appendToLogArea("Lỗi khi khởi tạo AudioServer: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private void stopServer() {
         if (isRunning) {
             isRunning = false;
@@ -320,9 +370,7 @@ public class RemoteDesktopServer {
                     if (connectionType.equals("REMOTE_DESKTOP")) {
                         new RemoteClientHandler(socket, connectionType).run();
                     }
-                    /*if (connectionType.equals("AUDIO")) {
-                        new AudioHandler(socket).start();
-                    }*/
+
                 } catch (EOFException e) {
                     System.out.println("Client " + clientAddress + " đã ngắt kết nối");
                 } catch (IOException e) {
@@ -359,6 +407,7 @@ public class RemoteDesktopServer {
         SwingUtilities.invokeLater(() -> {
             logArea.append(message + "\n");
             logArea.setCaretPosition(logArea.getDocument().getLength());
+            System.out.println(message);
         });
     }
     private void appendToChatArea(String message) {
@@ -471,73 +520,77 @@ public class RemoteDesktopServer {
             }
         }
     }
-    public class RemoteClientHandler implements Runnable {
-        private final Socket socket;
-        private final String requestType;
-        private Robot robot;
-        private Rectangle screenRect;
-        private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+        public static class RemoteClientHandler implements Runnable {
+            private final Socket socket;
+            private final String requestType;
+            private Robot robot;
+            private Rectangle screenRect;
+            private boolean isRunning = true; // Biến điều khiển luồng
+            private static final ExecutorService executorService = Executors.newCachedThreadPool();
+            public RemoteClientHandler(Socket socket, String requestType) {
+                this.socket = socket;
+                this.requestType = requestType;
 
-
-        public RemoteClientHandler(Socket socket, String requestType) {
-            this.socket = socket;
-            this.requestType = requestType;
-
-            try {
-                robot = new Robot();
-                Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-                screenRect = new Rectangle(screenSize);
-            } catch (AWTException e) {
-                System.err.println("Không thể khởi tạo Robot: " + e.getMessage());
+                try {
+                    robot = new Robot();
+                    Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                    screenRect = new Rectangle(screenSize);
+                } catch (AWTException e) {
+                    System.err.println("Không thể khởi tạo Robot: " + e.getMessage());
+                }
             }
-        }
 
+            @Override
+            public void run() {
+                String clientAddress = socket.getInetAddress().getHostAddress();
+                try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+                     DataInputStream dis = new DataInputStream(socket.getInputStream())) {
 
-        @Override
-        public void run() {
-            String clientAddress = socket.getInetAddress().getHostAddress();
-            try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-                 DataInputStream dis = new DataInputStream(socket.getInputStream())) {
-                clients.put(socket, dos);
+                    clients.put(socket, dos);
 
-                if ("REMOTE_DESKTOP".equalsIgnoreCase(requestType)) {
-                    dos.writeInt(screenRect.width);
-                    dos.writeInt(screenRect.height);
-                    dos.flush();
-                    executorService.submit(this::sendScreenImages);
-                    while (isRunning && !socket.isClosed()) {
-                        try {
-                            handleClientCommands(dis);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
+                    if ("REMOTE_DESKTOP".equalsIgnoreCase(requestType)) {
+                        dos.writeInt(screenRect.width);
+                        dos.writeInt(screenRect.height);
+                        dos.flush();
+
+                        // Bắt đầu luồng gửi ảnh màn hình
+                        executorService.submit(this::sendScreenImages);
+
+                        // Vòng lặp xử lý lệnh client
+                        while (isRunning && !socket.isClosed()) {
+                            try {
+                                handleClientCommands(dis);
+                            } catch (IOException e) {
+                                System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+                                break;
+                            }
                         }
                     }
+                } catch (IOException e) {
+                    System.err.println("Lỗi khi gửi/nhận dữ liệu qua socket: " + e.getMessage());
+                } finally {
+                    cleanUp(clientAddress);
                 }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } finally {
-                cleanUp(clientAddress);
             }
-        }
 
-        private void sendScreenImages() {
-            try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
-                while (isRunning && !socket.isClosed()) {
-                    BufferedImage screenCapture = robot.createScreenCapture(screenRect);
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ImageIO.write(screenCapture, "jpg", baos);
-                    byte[] imageBytes = baos.toByteArray();
+            private void sendScreenImages() {
+                try (DataOutputStream dos = new DataOutputStream(socket.getOutputStream())) {
+                    while (isRunning && !socket.isClosed()) {
+                        BufferedImage screenCapture = robot.createScreenCapture(screenRect);
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        ImageIO.write(screenCapture, "jpg", baos);
+                        byte[] imageBytes = baos.toByteArray();
 
-                    dos.writeUTF("IMG");
-                    dos.writeInt(imageBytes.length);
-                    dos.write(imageBytes);
-                    dos.flush();
-                    Thread.sleep(10);
+                        dos.writeUTF("IMG");
+                        dos.writeInt(imageBytes.length);
+                        dos.write(imageBytes);
+                        dos.flush();
+                        Thread.sleep(10); // Điều chỉnh thời gian trễ (delay) tại đây nếu cần thiết
+                    }
+                } catch (IOException | InterruptedException e) {
+                    System.out.println("Client " + socket.getInetAddress().getHostAddress() + " đã ngắt kết nối");
                 }
-            } catch (IOException | InterruptedException e) {
-                System.out.println("Client đã ngắt kết nối");
             }
-        }
 
         private void handleClientCommands(DataInputStream dis) throws IOException {
             try {
@@ -551,6 +604,7 @@ public class RemoteDesktopServer {
                     handleControlAction(action, x, y, data);
                 }
             } catch (EOFException | SocketException e) {
+                cleanUp(socket.getInetAddress().getHostAddress());
                 System.out.println("Client đã ngắt kết nối");
             } catch (InterruptedException e) {
                 System.out.println("Lỗi khi xử lý lệnh từ client: " + e.getMessage());
@@ -588,7 +642,11 @@ public class RemoteDesktopServer {
             }
             System.out.println("Client " + clientAddress + " đã ngắt kết nối");
         }
-    }
+        public void stop() {
+                isRunning = false;
+            }
+        }
+
     public class ChatHandler extends Thread {
         private final Socket socket;
         private final DataInputStream dis;
@@ -707,18 +765,24 @@ public class RemoteDesktopServer {
                 byte[] buffer = new byte[4096*4];
                 int bytesRead;
                 while (running) {
-                    if (dis.readUTF().equals("END_CALL")) {
-                        stopAudio();
-                        break;
-                    }
+
                     bytesRead = microphone.read(buffer, 0, buffer.length);
                     dos.write(buffer, 0, bytesRead);
                     bytesRead = dis.read(buffer, 0, buffer.length);
                     speaker.write(buffer, 0, bytesRead);
                 }
+            } catch (SocketException e) {
+                System.out.println("Client đã ngắt kết nối audio");
+                stopAudio();
             } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
+                System.out.println("Client đã ngắt kết nối audio");
+                stopAudio();
+            } catch (IllegalArgumentException e) {
+                System.out.println("Client đã ngắt kết nối audio");
+                stopAudio();
+
+            }
+            finally {
                 stopAudio();
             }
         }
@@ -729,7 +793,7 @@ public class RemoteDesktopServer {
             microphone.close();
             speaker.stop();
             speaker.close();
-            callButton.setEnabled(true);
+
         }
     }
 }
