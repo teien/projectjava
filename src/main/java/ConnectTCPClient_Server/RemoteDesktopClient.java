@@ -93,12 +93,7 @@ public class RemoteDesktopClient extends JFrame {
         remoteButton.setEnabled(false);
         remoteButton.addActionListener(e -> {
             try {
-                if (!checkRemoteConnection()) {
-                    connectToServerInBackground();
-                    Thread.sleep(500);
-                }
                 startRemote();
-
             } catch (IOException ex) {
                 ex.printStackTrace();
             } catch (InterruptedException ex) {
@@ -133,8 +128,15 @@ public class RemoteDesktopClient extends JFrame {
 
         callButton.addActionListener(e -> {
             try {
-                startCall();
-                callButton.setEnabled(false);
+                if (callButton.getText().equals("Call")) {
+                    startCall();
+                    callButton.setText("End Call");
+                } else {
+                    auDos.writeUTF("END_CALL");
+                    auDos.flush();
+                    callButton.setText("Call");
+                }
+
             } catch (LineUnavailableException | IOException ex) {
                 throw new RuntimeException(ex);
             }
@@ -354,6 +356,9 @@ public class RemoteDesktopClient extends JFrame {
             if (fileDis != null) fileDis.close();
             if (fileDos != null) fileDos.close();
             if (fileSocket != null) fileSocket.close();
+            if (auDis != null) auDis.close();
+            if (auDos != null) auDos.close();
+            if (audioSocket != null) audioSocket.close();
         } catch (IOException ex) {
             ex.printStackTrace();
         }

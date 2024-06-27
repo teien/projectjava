@@ -707,6 +707,10 @@ public class RemoteDesktopServer {
                 byte[] buffer = new byte[4096*4];
                 int bytesRead;
                 while (running) {
+                    if (dis.readUTF().equals("END_CALL")) {
+                        stopAudio();
+                        break;
+                    }
                     bytesRead = microphone.read(buffer, 0, buffer.length);
                     dos.write(buffer, 0, bytesRead);
                     bytesRead = dis.read(buffer, 0, buffer.length);
@@ -715,7 +719,6 @@ public class RemoteDesktopServer {
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-
                 stopAudio();
             }
         }
