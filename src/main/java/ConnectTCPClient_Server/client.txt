@@ -18,7 +18,6 @@ import java.util.concurrent.*;
 public class RemoteDesktopClient extends JFrame {
     private final JTextField nameField;
     private final JPanel chatPanel;
-    private final JButton callButton;
     private Socket socket;
     private DataInputStream dis;
     private DataOutputStream dos;
@@ -41,13 +40,11 @@ public class RemoteDesktopClient extends JFrame {
     private DataInputStream chatDis;
     private final JButton sendFileButton;
     private final JButton sendChatButton;
-    private Socket audioSocket;
-    private DataOutputStream auDos;
-    private DataInputStream auDis;
 
     public static void main(String[] args) {
         new RemoteDesktopClient().setVisible(true);
     }
+
     public RemoteDesktopClient() {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
@@ -129,16 +126,9 @@ public class RemoteDesktopClient extends JFrame {
         sendChatButton.setEnabled(checkChatConnection());
         JButton videoCallButton = new JButton("Video Call");
         videoCallButton.addActionListener(e -> startVideoCall());
-        callButton = new JButton("Call");
+        JButton callButton = new JButton("Call");
 
-        callButton.addActionListener(e -> {
-            try {
-                startCall();
-                callButton.setEnabled(false);
-            } catch (LineUnavailableException | IOException ex) {
-                throw new RuntimeException(ex);
-            }
-        });
+       // callButton.addActionListener(e -> startCall());
 
 
         JPanel northPanel = new JPanel(new BorderLayout());
@@ -159,19 +149,13 @@ public class RemoteDesktopClient extends JFrame {
 
     }
 
-
-
-    private void setJButton(JButton... JButton) {
-        for (JButton jbutton : JButton) {
-            jbutton.setEnabled(false);
-        }
-    }
     private @NotNull JButton getjButton() {
         JButton sendFileButton = new JButton("Send File");
         sendFileButton.setEnabled(checkFileConnection());
         sendFileButton.addActionListener(e -> sendFile());
         return sendFileButton;
     }
+
     private void setButtonSize(JButton... buttons) {
 
         Dimension buttonSize = new Dimension(130, 23);
@@ -183,6 +167,7 @@ public class RemoteDesktopClient extends JFrame {
         for (JButton button : buttons){
             button.setFont(new Font("JetBrains Mono Light", Font.BOLD, 11));}
     }
+
     private @NotNull JButton getConnectButton() {
         JButton connectButton = new JButton("Connect");
         connectButton.addActionListener(e -> connectToServerInBackground());
@@ -204,7 +189,6 @@ public class RemoteDesktopClient extends JFrame {
             private boolean fileServerConnected = false;
             private boolean remoteServerConnected = false;
             private boolean chatServerConnected = false;
-            private boolean audioServerConnected = false;
 
             @Override
             protected Void doInBackground() throws Exception {
@@ -234,20 +218,13 @@ public class RemoteDesktopClient extends JFrame {
                 } catch (Exception e) {
                     JOptionPane.showMessageDialog(null, e.getMessage(), "Lỗi kết nối Chat Server", JOptionPane.ERROR_MESSAGE);
                 }
-                try {
-                    connectToAudioServer(ip);
-                    audioServerConnected = true;
-                } catch (Exception e) {
-                    JOptionPane.showMessageDialog(null, e.getMessage(), "Lỗi kết nối Audio Server", JOptionPane.ERROR_MESSAGE);
-
-                }
 
                 return null;
             }
 
             @Override
             protected void done() {
-                if (fileServerConnected || remoteServerConnected || chatServerConnected|| audioServerConnected) {
+                if (fileServerConnected || remoteServerConnected || chatServerConnected) {
                     connectButton.setText("Connected");
                     connectButton.setEnabled(false);
                     disconnectButton.setEnabled(true);
@@ -264,10 +241,10 @@ public class RemoteDesktopClient extends JFrame {
                 remoteButton.setEnabled(remoteServerConnected);
                 sendFileButton.setEnabled(fileServerConnected);
                 sendChatButton.setEnabled(chatServerConnected);
-                callButton.setEnabled(audioServerConnected);
             }
         }.execute();
     }
+
     private void connectToFileServer(String ip) throws IOException {
         try {
             fileSocket = new Socket(ip, 49152);
@@ -281,37 +258,12 @@ public class RemoteDesktopClient extends JFrame {
             throw new IOException("Lỗi khi kết nối tới server truyền file: " + e.getMessage());
         }
     }
-    private void connectToChatServer(String ip) throws IOException {
-        try {
-            chatSocket = new Socket(ip, 49151);
-            chatDos = new DataOutputStream(new BufferedOutputStream(chatSocket.getOutputStream()));
-            chatDis = new DataInputStream(new BufferedInputStream(chatSocket.getInputStream()));
-            System.out.println("Đã kết nối tới server chat");
-        } catch (ConnectException e) {
-            setJButton(sendChatButton);
-            throw new ConnectException("Không thể kết nối tới server chat tại " + ip + ": " + e.getMessage());
-        } catch (IOException e) {
-            setJButton(sendChatButton);
-            throw new IOException("Lỗi khi kết nối tới server chat: " + e.getMessage());
-        }
-    }
+
     private void connectToRemoteServer(String ip) throws IOException {
         try {
             socket = new Socket(ip, 49150);
             dos = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
             dis = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-            System.out.println("Đã kết nối tới server");
-        } catch (ConnectException e) {
-            throw new ConnectException("Không thể kết nối tới server Remote tại " + ip + ": " + e.getMessage());
-        } catch (IOException e) {
-            throw new IOException("Lỗi khi kết nối tới server: " + e.getMessage());
-        }
-    }
-    private void connectToAudioServer(String ip) throws  IOException {
-        try {
-            audioSocket = new Socket(ip, 49149);
-            auDos = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
-            auDis = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             System.out.println("Đã kết nối tới server");
         } catch (ConnectException e) {
             throw new ConnectException("Không thể kết nối tới server Remote tại " + ip + ": " + e.getMessage());
@@ -332,6 +284,7 @@ public class RemoteDesktopClient extends JFrame {
             e.printStackTrace();
         }
     }
+
     private boolean checkRemoteConnection() {
         return socket != null && !socket.isClosed() && socket.isConnected() && !socket.isInputShutdown() && !socket.isOutputShutdown() && dis != null && dos != null ;
     }
@@ -358,11 +311,7 @@ public class RemoteDesktopClient extends JFrame {
             ex.printStackTrace();
         }
     }
-    private void startCall() throws LineUnavailableException, IOException {
-        RemoteDesktopServer.AudioHandler audioHandler = new RemoteDesktopServer.AudioHandler(audioSocket);
-        audioHandler.start();
-        System.out.println("Đã bắt đầu cuộc gọi");
-    }
+
     private void startRemote() throws IOException, InterruptedException {
         remoteData();
         remoteButton.setEnabled(false);
@@ -379,6 +328,7 @@ public class RemoteDesktopClient extends JFrame {
         addKeyListeners(frame, dos);
 
         BlockingQueue<BufferedImage> imageQueue = new LinkedBlockingQueue<>();
+        BlockingQueue<byte[]> audioQueue = new LinkedBlockingQueue<>();
 
         SwingWorker<Void, Void> receiverWorker = new SwingWorker<>() {
             @Override
@@ -394,7 +344,12 @@ public class RemoteDesktopClient extends JFrame {
                                 ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes);
                                 BufferedImage image = ImageIO.read(bais);
                                 imageQueue.put(image);
-                            }
+                            } /*else if ("AUDIO".equals(type)) {
+                                int length = dis.readInt();
+                                byte[] audioBytes = new byte[length];
+                                dis.readFully(audioBytes);
+                                audioQueue.put(audioBytes);
+                            }*/
                         } catch (EOFException | SocketException e) {
                             System.out.println("Server đã đóng kết nối");
                             break;
@@ -434,8 +389,22 @@ public class RemoteDesktopClient extends JFrame {
             }
         };
 
+        /*SwingWorker<Void, Void> audioWorker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                while (!isCancelled()) {
+                    byte[] audioBytes = audioQueue.take();
+                    playAudio(audioBytes);
+                }
+                return null;
+            }
+        };*/
+
+
         receiverWorker.execute();
         imageWorker.execute();
+       // audioWorker.execute();
+
 
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.addWindowListener(new WindowAdapter() {
@@ -458,84 +427,8 @@ public class RemoteDesktopClient extends JFrame {
         });
         frame.repaint();
     }
-    private Point adjustMouseCoordinates(Point clientPoint) {
-        Dimension frameSize = frame.getContentPane().getSize();
-        int x = (int) (clientPoint.x * (serverScreenWidth / (double) frameSize.width));
-        int y = (int) (clientPoint.y * (serverScreenHeight / (double) frameSize.height));
-        return new Point(x, y);
-    }
-    private void addMouseListeners(JLabel label, DataOutputStream dos) {
-        MouseAdapter mouseAdapter = new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                sendMouseEvent("MOUSE_PRESS", e.getPoint(), dos, e.getButton());
-            }
 
-            @Override
-            public void mouseReleased(MouseEvent e) {
-                sendMouseEvent("MOUSE_RELEASE", e.getPoint(), dos, e.getButton());
-            }
 
-            @Override
-            public void mouseMoved(MouseEvent e) {
-                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
-            }
-
-            @Override
-            public void mouseDragged(MouseEvent e) {
-                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
-            }
-
-            private void sendMouseEvent(String action, Point point, DataOutputStream dos, int button) {
-                try {
-                    Point adjustedPoint = adjustMouseCoordinates(point);
-                    dos.writeUTF("CTL");
-                    dos.writeUTF(action);
-                    dos.writeInt(adjustedPoint.x);
-                    dos.writeInt(adjustedPoint.y);
-                    dos.writeInt(button);
-                    dos.flush();
-                } catch (SocketException ex) {
-                    System.out.println("Server đã đóng kết nối");
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        };
-
-        label.addMouseListener(mouseAdapter);
-        label.addMouseMotionListener(mouseAdapter);
-    }
-    private void addKeyListeners(JFrame frame, DataOutputStream dos) {
-        KeyAdapter keyAdapter = new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                sendKeyEvent("PRESS", e.getKeyCode(), dos);
-            }
-
-            @Override
-            public void keyReleased(KeyEvent e) {
-                sendKeyEvent("RELEASE", e.getKeyCode(), dos);
-            }
-
-            private void sendKeyEvent(String action, int keyCode, DataOutputStream dos) {
-                try {
-                    dos.writeUTF("CTL");
-                    dos.writeUTF(action);
-                    dos.writeInt(-1);
-                    dos.writeInt(-1);
-                    dos.writeInt(keyCode);
-                    dos.flush();
-                } catch (SocketException ex) {
-                    System.out.println("Server đã đóng kết nối");
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }
-        };
-
-        frame.addKeyListener(keyAdapter);
-    }
     private void updateImage() {
         if (currentImage != null) {
             Dimension frameSize = frame.getContentPane().getSize();
@@ -545,10 +438,18 @@ public class RemoteDesktopClient extends JFrame {
         }
     }
 
+    private void closeResources() {
+        try {
+            if (dos != null) dos.close();
+        } catch (IOException e) {
+            System.err.println("Lỗi khi đóng DataOutputStream: " + e.getMessage());
+        }
+    }
+
     private void startVideoCall() {
         // Chức năng gọi video chưa được triển khai
     }
-
+    //FILE_TRANSFER
     public void sendFile() {
         JFileChooser fileChooser = new JFileChooser();
         int returnValue = fileChooser.showOpenDialog(this);
@@ -647,6 +548,106 @@ public class RemoteDesktopClient extends JFrame {
         }.execute();
     }
 
+
+
+    private Point adjustMouseCoordinates(Point clientPoint) {
+        Dimension frameSize = frame.getContentPane().getSize();
+        int x = (int) (clientPoint.x * (serverScreenWidth / (double) frameSize.width));
+        int y = (int) (clientPoint.y * (serverScreenHeight / (double) frameSize.height));
+        return new Point(x, y);
+    }
+
+
+
+    private void addMouseListeners(JLabel label, DataOutputStream dos) {
+        MouseAdapter mouseAdapter = new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                sendMouseEvent("MOUSE_PRESS", e.getPoint(), dos, e.getButton());
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                sendMouseEvent("MOUSE_RELEASE", e.getPoint(), dos, e.getButton());
+            }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+                sendMouseEvent("MOVE", e.getPoint(), dos, -1);
+            }
+
+            private void sendMouseEvent(String action, Point point, DataOutputStream dos, int button) {
+                try {
+                    Point adjustedPoint = adjustMouseCoordinates(point);
+                    dos.writeUTF("CTL");
+                    dos.writeUTF(action);
+                    dos.writeInt(adjustedPoint.x);
+                    dos.writeInt(adjustedPoint.y);
+                    dos.writeInt(button);
+                    dos.flush();
+                } catch (SocketException ex) {
+                    System.out.println("Server đã đóng kết nối");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        };
+
+        label.addMouseListener(mouseAdapter);
+        label.addMouseMotionListener(mouseAdapter);
+    }
+
+    private void addKeyListeners(JFrame frame, DataOutputStream dos) {
+        KeyAdapter keyAdapter = new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                sendKeyEvent("PRESS", e.getKeyCode(), dos);
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                sendKeyEvent("RELEASE", e.getKeyCode(), dos);
+            }
+
+            private void sendKeyEvent(String action, int keyCode, DataOutputStream dos) {
+                try {
+                    dos.writeUTF("CTL");
+                    dos.writeUTF(action);
+                    dos.writeInt(-1);
+                    dos.writeInt(-1);
+                    dos.writeInt(keyCode);
+                    dos.flush();
+                } catch (SocketException ex) {
+                    System.out.println("Server đã đóng kết nối");
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        };
+
+        frame.addKeyListener(keyAdapter);
+    }
+    //
+    private void connectToChatServer(String ip) throws IOException {
+        try {
+            chatSocket = new Socket(ip, 49151);
+            chatDos = new DataOutputStream(new BufferedOutputStream(chatSocket.getOutputStream()));
+            chatDis = new DataInputStream(new BufferedInputStream(chatSocket.getInputStream()));
+            System.out.println("Đã kết nối tới server chat");
+        } catch (ConnectException e) {
+            setJButton(sendChatButton);
+            throw new ConnectException("Không thể kết nối tới server chat tại " + ip + ": " + e.getMessage());
+        } catch (IOException e) {
+            setJButton(sendChatButton);
+            throw new IOException("Lỗi khi kết nối tới server chat: " + e.getMessage());
+        }
+    }
+
     private void sendChatMessage() throws IOException {
         String message = chatInput.getText();
         String name = nameField.getText();
@@ -654,6 +655,11 @@ public class RemoteDesktopClient extends JFrame {
             chatDos.writeUTF(name + ": " + message);
             chatDos.flush();
             chatInput.setText("");
+        }
+    }
+    private void setJButton(JButton... JButton) {
+        for (JButton jbutton : JButton) {
+            jbutton.setEnabled(false);
         }
     }
     private void startReceivingMessages() {
@@ -688,6 +694,7 @@ public class RemoteDesktopClient extends JFrame {
             }
         }.execute();
     }
+
     private void appendToChatArea(String message) {
         SwingUtilities.invokeLater(() -> {
             chatArea.append(message + "\n");
@@ -695,4 +702,51 @@ public class RemoteDesktopClient extends JFrame {
         });
     }
 }
+/*private void playAudio(byte[] audioBytes) {
+            try {
+                AudioFormat format = new AudioFormat(44100, 16, 1, true, false);
+                DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+                SourceDataLine audioLine = (SourceDataLine) AudioSystem.getLine(info);
+                audioLine.open(format);
+                audioLine.start();
 
+                audioLine.write(audioBytes, 0, audioBytes.length);
+                audioLine.drain();
+                audioLine.close();
+            } catch (LineUnavailableException e) {
+                System.err.println("Lỗi khi phát âm thanh: " + e.getMessage());
+            }
+        }*/
+   /* private void startCall() {
+        TargetDataLine microphone = null;
+        try {
+            AudioFormat format = new AudioFormat(44100, 16, 2, true, true);
+            DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+            microphone = (TargetDataLine) AudioSystem.getLine(info);
+            microphone.open(format);
+            microphone.start();
+
+            byte[] buffer = new byte[4096 * 10];
+            int bytesRead;
+            System.out.println("Bắt đầu gửi âm thanh...");
+            while (true) {
+                bytesRead = microphone.read(buffer, 0, buffer.length);
+                if (bytesRead > 0) {
+                    System.out.println("Đọc được " + bytesRead + " bytes dữ liệu âm thanh từ microphone");
+                    dos.writeUTF("AUDIO");
+                    dos.writeInt(bytesRead);
+                    dos.write(buffer, 0, bytesRead);
+                    dos.flush();
+                    System.out.println("Gửi " + bytesRead + " bytes dữ liệu âm thanh thành công");
+                }
+            }
+        } catch (LineUnavailableException | IOException e) {
+            System.err.println("Lỗi khi stream âm thanh: " + e.getMessage());
+        } finally {
+            if (microphone != null) {
+                microphone.stop();
+                microphone.close();
+            }
+            closeResources();
+        }
+    }*/

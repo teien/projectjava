@@ -38,8 +38,6 @@ public class RemoteDesktopServer {
 
     private JButton sendButton;
     private static JButton callButton;
-    private JCheckBox audioCheckBox;
-    private ServerSocket serverAudioSocket;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new RemoteDesktopServer().createAndShowGUI());
@@ -71,7 +69,6 @@ public class RemoteDesktopServer {
         remoteCheckBox = new JCheckBox("Remote Desktop");
         chatCheckBox = new JCheckBox("Chat");
         fileCheckBox = new JCheckBox("File Transfer");
-        audioCheckBox = new JCheckBox("Audio");
 
         stopButton.setEnabled(false);
         startButton.setEnabled(true);
@@ -84,7 +81,6 @@ public class RemoteDesktopServer {
         remoteCheckBox.setSelected(true);
         chatCheckBox.setSelected(true);
         fileCheckBox.setSelected(true);
-        audioCheckBox.setSelected(true);
 
         remoteCheckBox.addActionListener(e -> {
             startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
@@ -95,15 +91,11 @@ public class RemoteDesktopServer {
         fileCheckBox.addActionListener(e -> {
             startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
         });
-        audioCheckBox.addActionListener(e -> {
-            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
-        });
 
 
         checkBoxPanel.add(remoteCheckBox);
         checkBoxPanel.add(chatCheckBox);
         checkBoxPanel.add(fileCheckBox);
-        checkBoxPanel.add(audioCheckBox);
 
         controlPanel.add(startButton);
         controlPanel.add(stopButton);
@@ -141,7 +133,6 @@ public class RemoteDesktopServer {
 
         callButton.addActionListener(e -> {
             micOpen = !micOpen;
-
             if (micOpen) {
                 callButton.setText("End Call");
             } else {
@@ -183,7 +174,7 @@ public class RemoteDesktopServer {
             chatCheckBox.setEnabled(false);
             remoteCheckBox.setEnabled(false);
             fileCheckBox.setEnabled(false);
-            audioCheckBox.setEnabled(false);
+
             new Thread(() -> {
                 try {
                     if (chatCheckBox.isSelected()) {
@@ -197,10 +188,6 @@ public class RemoteDesktopServer {
                     if (fileCheckBox.isSelected()) {
                         serverFileSocket = new ServerSocket(49152);
                         appendToLogArea("Server File Transfer đang chờ kết nối...");
-                    }
-                    if (audioCheckBox.isSelected()) {
-                        serverAudioSocket = new ServerSocket(49149);
-                        appendToLogArea("Server Audio đang chờ kết nối...");
                     }
 
                     while (isRunning) {
@@ -226,12 +213,6 @@ public class RemoteDesktopServer {
                                 appendToLogArea("Client " + clientAddress + " đã kết nối FileServer");
                                 new Thread(() -> handleFileClient(socket)).start();
                             }
-                            if (audioCheckBox.isSelected()) {
-                                Socket socket = serverAudioSocket.accept();
-                                String clientAddress = socket.getInetAddress().getHostAddress();
-                                appendToLogArea("Client " + clientAddress + " đã kết nối AudioServer");
-                                new Thread(() -> handleAudioClient(socket)).start();
-                            }
 
                         } catch (SocketException e) {
                             System.out.println("Server đã đóng kết nối");
@@ -248,6 +229,56 @@ public class RemoteDesktopServer {
             }).start();
         }
     }
+
+
+    private void handleFileClient(Socket socket) {
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                new FileHandler(socket).start();
+                return null;
+            }
+        };
+        worker.execute();
+    }
+
+    private void handleRemoteClient(Socket socket) {
+        String clientAddress = socket.getInetAddress().getHostAddress();
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws LineUnavailableException {
+                try {
+                    DataInputStream dis = new DataInputStream(socket.getInputStream());
+                    String connectionType = dis.readUTF();
+                    if (connectionType.equals("REMOTE_DESKTOP")) {
+                        new RemoteClientHandler(socket, connectionType).run();
+                    }
+                    /*if (connectionType.equals("AUDIO")) {
+                        new AudioHandler(socket).start();
+                    }*/
+                } catch (EOFException e) {
+                    System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+        };
+        worker.execute();
+    }
+
+    private void handleChatClient(Socket socket) {
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws LineUnavailableException, IOException {
+                new ChatHandler(socket).start();
+
+                return null;
+            }
+        };
+        worker.execute();
+    }
+
     private void stopServer() {
         if (isRunning) {
             isRunning = false;
@@ -299,74 +330,22 @@ public class RemoteDesktopServer {
         }
     }
 
-    private void handleFileClient(Socket socket) {
-        SwingWorker<Void, Void> worker = new SwingWorker<>() {
-            @Override
-            protected Void doInBackground() {
-                new FileHandler(socket).start();
-                return null;
-            }
-        };
-        worker.execute();
-    }
-    private void handleRemoteClient(Socket socket) {
-        String clientAddress = socket.getInetAddress().getHostAddress();
-        SwingWorker<Void, Void> worker = new SwingWorker<>() {
-            @Override
-            protected Void doInBackground() throws LineUnavailableException {
-                try {
-                    DataInputStream dis = new DataInputStream(socket.getInputStream());
-                    String connectionType = dis.readUTF();
-                    if (connectionType.equals("REMOTE_DESKTOP")) {
-                        new RemoteClientHandler(socket, connectionType).run();
-                    }
-                    /*if (connectionType.equals("AUDIO")) {
-                        new AudioHandler(socket).start();
-                    }*/
-                } catch (EOFException e) {
-                    System.out.println("Client " + clientAddress + " đã ngắt kết nối");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                return null;
-            }
-        };
-        worker.execute();
-    }
-    private void handleChatClient(Socket socket) {
-        SwingWorker<Void, Void> worker = new SwingWorker<>() {
-            @Override
-            protected Void doInBackground() throws LineUnavailableException, IOException {
-                new ChatHandler(socket).start();
-
-                return null;
-            }
-        };
-        worker.execute();
-    }
-    private void handleAudioClient(Socket socket) {
-        SwingWorker<Void, Void> worker = new SwingWorker<>() {
-            @Override
-            protected Void doInBackground() throws LineUnavailableException, IOException {
-                new AudioHandler(socket).start();
-                return null;
-            }
-        };
-        worker.execute();
-    }
-
     private void appendToLogArea(String message) {
         SwingUtilities.invokeLater(() -> {
             logArea.append(message + "\n");
             logArea.setCaretPosition(logArea.getDocument().getLength());
         });
     }
+
     private void appendToChatArea(String message) {
         SwingUtilities.invokeLater(() -> {
             chatArea.append(message + "\n");
             chatArea.setCaretPosition(chatArea.getDocument().getLength());
         });
     }
+
+
+    ///////////////////////////SENDFILE/////////////////////////////////
 
     private void sendFileToAllClients() throws IOException {
         JFileChooser fileChooser = new JFileChooser();
@@ -380,6 +359,7 @@ public class RemoteDesktopServer {
             appendToLogArea("Đã gửi file: " + selectedFile.getName() + " tới client.");
         }
     }
+
     private void sendFile(DataOutputStream dos, File file) {
         try {
             dos.writeUTF("FILE_RECEIVE");
@@ -399,6 +379,10 @@ public class RemoteDesktopServer {
             e.printStackTrace();
         }
     }
+
+
+//////////////////////////// FileHandler, RemoteClientHandler, ChatHandler ////////////////////////////
+
 
     public class FileHandler extends Thread {
         private final Socket socket;
@@ -449,6 +433,7 @@ public class RemoteDesktopServer {
             }
         }
 
+
         private void receiveFile(DataInputStream dis) {
             try {
                 String fileName = dis.readUTF();
@@ -471,6 +456,8 @@ public class RemoteDesktopServer {
             }
         }
     }
+
+
     public class RemoteClientHandler implements Runnable {
         private final Socket socket;
         private final String requestType;
@@ -504,7 +491,17 @@ public class RemoteDesktopServer {
                     dos.writeInt(screenRect.width);
                     dos.writeInt(screenRect.height);
                     dos.flush();
+
                     executorService.submit(this::sendScreenImages);
+
+                        /*executorService.submit(() -> {
+                            try {
+                                startAudioStreaming(dos);
+                            } catch (Exception e) {
+                                System.err.println("Lỗi khi gửi âm thanh: " + e.getMessage());
+                            }
+                        });*/
+
                     while (isRunning && !socket.isClosed()) {
                         try {
                             handleClientCommands(dis);
@@ -538,6 +535,37 @@ public class RemoteDesktopServer {
                 System.out.println("Client đã ngắt kết nối");
             }
         }
+
+        /*private void startAudioStreaming(DataOutputStream dos) {
+            try {
+                AudioFormat format = new AudioFormat(44100, 16, 1, true, false);
+                DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+                TargetDataLine microphone = (TargetDataLine) AudioSystem.getLine(info);
+                microphone.open(format);
+                microphone.start();
+
+                byte[] buffer = new byte[4096 * 4];
+                int bytesRead;
+
+                while (isRunning && !socket.isClosed()) {
+                    bytesRead = microphone.read(buffer, 0, buffer.length);
+                    if (bytesRead > 0) {
+                        dos.writeUTF("AUDIO");
+                        dos.writeInt(bytesRead);
+                        dos.write(buffer, 0, bytesRead);
+                        dos.flush();
+                        System.out.println("Gửi âm thanh");
+                    }
+                }
+
+                microphone.close();
+            } catch (LineUnavailableException | IOException e) {
+                System.err.println("Lỗi khi stream âm thanh: " + e.getMessage());
+            }
+        }*/
+
+
+
 
         private void handleClientCommands(DataInputStream dis) throws IOException {
             try {
@@ -589,6 +617,9 @@ public class RemoteDesktopServer {
             System.out.println("Client " + clientAddress + " đã ngắt kết nối");
         }
     }
+    ///////////////////////////CHAT/////////////////////////////////
+
+
     public class ChatHandler extends Thread {
         private final Socket socket;
         private final DataInputStream dis;
@@ -669,64 +700,63 @@ public class RemoteDesktopServer {
             }
         }
     }
-    public static class AudioHandler extends Thread {
+
+   /* public static class AudioHandler extends Thread {
+        private final Socket socket;
         private final DataInputStream dis;
-        private final DataOutputStream dos;
-        private final AudioFormat format;
-        private TargetDataLine microphone;
-        private SourceDataLine speaker;
-        private boolean running = true;
+        private final SourceDataLine speaker;
+        private volatile boolean isRunning;
 
         public AudioHandler(Socket socket) throws LineUnavailableException, IOException {
-            this.dis = new DataInputStream(socket.getInputStream());
-            this.dos = new DataOutputStream(socket.getOutputStream());
-            this.format = new AudioFormat(44100, 16, 1, true, false); // Tùy chỉnh nếu cần
-            initMicrophone();
-            initSpeaker();
-
-        }
-
-        private void initMicrophone() throws LineUnavailableException {
-            DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
-            microphone = (TargetDataLine) AudioSystem.getLine(micInfo);
-            microphone.open(format);
-        }
-
-        private void initSpeaker() throws LineUnavailableException {
-            DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
-            speaker = (SourceDataLine) AudioSystem.getLine(speakerInfo);
+            this.socket = socket;
+            AudioFormat format = new AudioFormat(44100, 16, 2, true, true);
+            dis = new DataInputStream(socket.getInputStream());
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+            speaker = (SourceDataLine) AudioSystem.getLine(info);
             speaker.open(format);
+            System.out.println("Đã khởi tạo AudioHandler");
         }
 
         @Override
         public void run() {
-            microphone.start();
-            speaker.start();
-
             try {
-                byte[] buffer = new byte[4096*4];
-                int bytesRead;
-                while (running) {
-                    bytesRead = microphone.read(buffer, 0, buffer.length);
-                    dos.write(buffer, 0, bytesRead);
-                    bytesRead = dis.read(buffer, 0, buffer.length);
-                    speaker.write(buffer, 0, bytesRead);
+                System.out.println("Bắt đầu nhận âm thanh");
+                speaker.start();
+                speaker.drain();
+                isRunning = true;
+
+                while (isRunning && !socket.isClosed()) {
+                        int bytesRead = dis.readInt();
+                    if (bytesRead <= 0 || bytesRead % 2 != 0) {
+                        System.err.println("Invalid audio data size: " + bytesRead);
+                        continue;
+                    }
+                        byte[] audioData = new byte[bytesRead];
+                        dis.readFully(audioData);
+                        speaker.write(audioData, 0, bytesRead);
+
+                    System.out.println("Phát âm thanh");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-
-                stopAudio();
+                closeResources();
             }
         }
 
-        public void stopAudio() {
-            running = false;
-            microphone.stop();
-            microphone.close();
-            speaker.stop();
-            speaker.close();
-            callButton.setEnabled(true);
+        public void stopAudioHandler() {
+            isRunning = false;
+            closeResources();
         }
-    }
+
+        private void closeResources() {
+            try {
+                if (dis != null) dis.close();
+                if (socket != null && !socket.isClosed()) socket.close();
+                if (speaker != null) speaker.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }*/
 }
