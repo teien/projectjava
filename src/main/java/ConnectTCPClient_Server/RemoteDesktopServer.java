@@ -210,10 +210,13 @@ public class RemoteDesktopServer {
                 try {
                     Socket socket = serverChatSocket.accept();
                     String clientAddress = socket.getInetAddress().getHostAddress();
+                   //lam sao de check khi client mat ket noi
+
                     appendToLogArea("Client " + clientAddress + " đã kết nối ChatServer");
                     new Thread(() -> handleChatClient(socket)).start();
                 } catch (SocketException e) {
                     System.out.println("ChatServer đã đóng kết nối");
+                    appendToLogArea("ChatServer đã đóng kết nối");
                 } catch (IOException e) {
                     if (isRunning) {
                         e.printStackTrace();
@@ -238,6 +241,7 @@ public class RemoteDesktopServer {
                     new Thread(() -> handleRemoteClient(socket)).start();
                 } catch (SocketException e) {
                     System.out.println("RemoteServer đã đóng kết nối");
+                    appendToLogArea("RemoteServer đã đóng kết nối");
                 } catch (IOException e) {
                     if (isRunning) {
                         e.printStackTrace();
@@ -262,6 +266,7 @@ public class RemoteDesktopServer {
                     new Thread(() -> handleFileClient(socket)).start();
                 } catch (SocketException e) {
                     System.out.println("FileServer đã đóng kết nối");
+                    appendToLogArea("FileServer đã đóng kết nối");
                 } catch (IOException e) {
                     if (isRunning) {
                         e.printStackTrace();
@@ -286,6 +291,7 @@ public class RemoteDesktopServer {
                     new Thread(() -> handleAudioClient(socket)).start();
                 } catch (SocketException e) {
                     System.out.println("AudioServer đã đóng kết nối");
+                    appendToLogArea("AudioServer đã đóng kết nối");
                 } catch (IOException e) {
                     if (isRunning) {
                         e.printStackTrace();
@@ -316,6 +322,9 @@ public class RemoteDesktopServer {
                 }
                 if (serverFileSocket != null && !serverFileSocket.isClosed()) {
                     serverFileSocket.close();
+                }
+                if (serverAudioSocket != null && !serverAudioSocket.isClosed()) {
+                    serverAudioSocket.close();
                 }
                 appendToLogArea("Server đã dừng");
             } catch (IOException e) {
@@ -373,6 +382,7 @@ public class RemoteDesktopServer {
 
                 } catch (EOFException e) {
                     System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -393,15 +403,21 @@ public class RemoteDesktopServer {
         worker.execute();
     }
     private void handleAudioClient(Socket socket) {
+        AudioHandler.ConnectionListener listener = clientAddress -> {
+            appendToLogArea("Client " + clientAddress + " đã ngắt kết nối AudioServer");
+        };
+
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() throws LineUnavailableException, IOException {
-                new AudioHandler(socket).start();
+                new AudioHandler(socket, listener).start();
                 return null;
             }
         };
         worker.execute();
     }
+
+
 
     private void appendToLogArea(String message) {
         SwingUtilities.invokeLater(() -> {
@@ -520,7 +536,7 @@ public class RemoteDesktopServer {
             }
         }
     }
-        public static class RemoteClientHandler implements Runnable {
+    public class RemoteClientHandler implements Runnable {
             private final Socket socket;
             private final String requestType;
             private Robot robot;
@@ -537,6 +553,7 @@ public class RemoteDesktopServer {
                     screenRect = new Rectangle(screenSize);
                 } catch (AWTException e) {
                     System.err.println("Không thể khởi tạo Robot: " + e.getMessage());
+                    appendToLogArea("Không thể khởi tạo Robot: " + e.getMessage());
                 }
             }
 
@@ -562,14 +579,18 @@ public class RemoteDesktopServer {
                                 handleClientCommands(dis);
                             } catch (IOException e) {
                                 System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+
+
                                 break;
                             }
                         }
                     }
                 } catch (IOException e) {
                     System.err.println("Lỗi khi gửi/nhận dữ liệu qua socket: " + e.getMessage());
+
                 } finally {
                     cleanUp(clientAddress);
+                    appendToLogArea("Client " + clientAddress + " đã ngắt kết nối RemoteServer");
                 }
             }
 
@@ -606,6 +627,7 @@ public class RemoteDesktopServer {
             } catch (EOFException | SocketException e) {
                 cleanUp(socket.getInetAddress().getHostAddress());
                 System.out.println("Client đã ngắt kết nối");
+
             } catch (InterruptedException e) {
                 System.out.println("Lỗi khi xử lý lệnh từ client: " + e.getMessage());
             }
@@ -641,30 +663,26 @@ public class RemoteDesktopServer {
                 System.err.println("Lỗi khi gửi/nhận dữ liệu qua socket: " + e.getMessage());
             }
             System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+
         }
         public void stop() {
                 isRunning = false;
             }
         }
-
     public class ChatHandler extends Thread {
         private final Socket socket;
-        private final DataInputStream dis;
-        private final DataOutputStream dos;
+        private DataInputStream dis;
+        private DataOutputStream dos;
 
         public ChatHandler(Socket socket) {
             this.socket = socket;
-            DataInputStream tempDis = null;
-            DataOutputStream tempDos = null;
             sendButton.addActionListener(e -> sendMessage());
             try {
-                tempDis = new DataInputStream(socket.getInputStream());
-                tempDos = new DataOutputStream(socket.getOutputStream());
+                dis = new DataInputStream(socket.getInputStream());
+                dos = new DataOutputStream(socket.getOutputStream());
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            dis = tempDis;
-            dos = tempDos;
         }
 
         @Override
@@ -679,6 +697,7 @@ public class RemoteDesktopServer {
                         broadcastMessage(message);
                     } catch (EOFException e) {
                         System.out.println("Client " + clientAddress + " đã ngắt kết nối");
+                        appendToLogArea("Client " + clientAddress + " đã ngắt kết nối ChatServer");
                         break;
                     } catch (SocketException e) {
                         System.out.println("Server đã đóng kết nối");
@@ -697,7 +716,6 @@ public class RemoteDesktopServer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                appendToLogArea("Client " + clientAddress + " đã ngắt kết nối");
             }
         }
 
@@ -727,73 +745,5 @@ public class RemoteDesktopServer {
             }
         }
     }
-    public static class AudioHandler extends Thread {
-        private final DataInputStream dis;
-        private final DataOutputStream dos;
-        private final AudioFormat format;
-        private TargetDataLine microphone;
-        private SourceDataLine speaker;
-        private boolean running = true;
 
-        public AudioHandler(Socket socket) throws LineUnavailableException, IOException {
-            this.dis = new DataInputStream(socket.getInputStream());
-            this.dos = new DataOutputStream(socket.getOutputStream());
-            this.format = new AudioFormat(44100, 16, 1, true, false); // Tùy chỉnh nếu cần
-            initMicrophone();
-            initSpeaker();
-
-        }
-
-        private void initMicrophone() throws LineUnavailableException {
-            DataLine.Info micInfo = new DataLine.Info(TargetDataLine.class, format);
-            microphone = (TargetDataLine) AudioSystem.getLine(micInfo);
-            microphone.open(format);
-        }
-
-        private void initSpeaker() throws LineUnavailableException {
-            DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
-            speaker = (SourceDataLine) AudioSystem.getLine(speakerInfo);
-            speaker.open(format);
-        }
-
-        @Override
-        public void run() {
-            microphone.start();
-            speaker.start();
-
-            try {
-                byte[] buffer = new byte[4096*4];
-                int bytesRead;
-                while (running) {
-
-                    bytesRead = microphone.read(buffer, 0, buffer.length);
-                    dos.write(buffer, 0, bytesRead);
-                    bytesRead = dis.read(buffer, 0, buffer.length);
-                    speaker.write(buffer, 0, bytesRead);
-                }
-            } catch (SocketException e) {
-                System.out.println("Client đã ngắt kết nối audio");
-                stopAudio();
-            } catch (IOException e) {
-                System.out.println("Client đã ngắt kết nối audio");
-                stopAudio();
-            } catch (IllegalArgumentException e) {
-                System.out.println("Client đã ngắt kết nối audio");
-                stopAudio();
-
-            }
-            finally {
-                stopAudio();
-            }
-        }
-
-        public void stopAudio() {
-            running = false;
-            microphone.stop();
-            microphone.close();
-            speaker.stop();
-            speaker.close();
-
-        }
-    }
 }
