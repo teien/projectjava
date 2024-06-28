@@ -394,7 +394,7 @@ public class RemoteDesktopClient extends JFrame {
     }
     private void startCall() throws LineUnavailableException, IOException {
        AudioHandler audioHandler = new AudioHandler(audioSocket, listener -> {});
-       audioHandler.start();
+       audioHandler.startAudio();
     }
 
     private Point adjustMouseCoordinates(Point clientPoint) {

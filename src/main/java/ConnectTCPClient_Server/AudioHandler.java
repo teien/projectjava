@@ -6,7 +6,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
-public class AudioHandler extends Thread {
+public class AudioHandler {
     private final DataInputStream dis;
     private final DataOutputStream dos;
     private final AudioFormat format;
@@ -31,42 +31,57 @@ public class AudioHandler extends Thread {
         microphone = (TargetDataLine) AudioSystem.getLine(micInfo);
         microphone.open(format);
     }
-    public interface ConnectionListener {
-        void onClientDisconnected(String clientAddress);
-    }
+
     private void initSpeaker() throws LineUnavailableException {
         DataLine.Info speakerInfo = new DataLine.Info(SourceDataLine.class, format);
         speaker = (SourceDataLine) AudioSystem.getLine(speakerInfo);
         speaker.open(format);
     }
 
-    @Override
-    public void run() {
-        microphone.start();
-        speaker.start();
-        System.out.println("AudioHandler is running...");
-        try {
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while (running) {
-                try {
-                    bytesRead = microphone.read(buffer, 0, buffer.length);
-                    dos.write(buffer, 0, bytesRead);
-                    dos.flush(); // Ensure the data is sent immediately
+    public interface ConnectionListener {
+        void onClientDisconnected(String clientAddress);
+    }
 
-                    System.out.println(bytesRead);
-                    bytesRead = dis.read(buffer, 0, buffer.length);
-                    if (bytesRead == -1) {
-                        throw new IOException("End of stream reached");
-                    }
-                    speaker.write(buffer, 0, bytesRead);
-                } catch (IOException e) {
-                    System.out.println("Client đã ngắt kết nối audio");
-                    listener.onClientDisconnected(socket.getInetAddress().getHostAddress());
-                    stopAudio();
-                }
+    public void startAudio() {
+        running = true;
+        Thread sendThread = new Thread(this::sendAudio);
+        Thread receiveThread = new Thread(this::receiveAudio);
+        sendThread.start();
+        receiveThread.start();
+    }
+
+    void sendAudio() {
+        try {
+            microphone.start();
+            byte[] buffer = new byte[4096];
+            while (running) {
+                int bytesRead = microphone.read(buffer, 0, buffer.length);
+                dos.write(buffer, 0, bytesRead);
+                dos.flush();
+                System.out.println("Sent " + bytesRead + " bytes.");
             }
-        } finally {
+        } catch (IOException e) {
+            System.out.println("Client đã ngắt kết nối audio");
+            listener.onClientDisconnected(socket.getInetAddress().getHostAddress());
+            stopAudio();
+        }
+    }
+
+    private void receiveAudio() {
+        try {
+            speaker.start();
+            byte[] buffer = new byte[4096];
+            while (running) {
+                int bytesRead = dis.read(buffer, 0, buffer.length);
+                if (bytesRead == -1) {
+                    throw new IOException("End of stream reached");
+                }
+                speaker.write(buffer, 0, bytesRead);
+                System.out.println("Received " + bytesRead + " bytes.");
+            }
+        } catch (IOException e) {
+            System.out.println("Client đã ngắt kết nối audio");
+            listener.onClientDisconnected(socket.getInetAddress().getHostAddress());
             stopAudio();
         }
     }
@@ -84,8 +99,9 @@ public class AudioHandler extends Thread {
         try {
             dis.close();
             dos.close();
+            socket.close();
         } catch (IOException e) {
-            System.out.println("Lỗi khi đóng DataInputStream/DataOutputStream: " + e.getMessage());
+            System.out.println("Lỗi khi đóng DataInputStream/DataOutputStream hoặc socket: " + e.getMessage());
         }
     }
 }

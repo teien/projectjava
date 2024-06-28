@@ -419,7 +419,7 @@ public class RemoteDesktopServer {
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() throws LineUnavailableException, IOException {
-                new AudioHandler(socket, listener).start();
+                new AudioHandler(socket, listener).startAudio();
                 return null;
             }
         };
