@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 import javax.swing.*;
@@ -36,6 +35,7 @@ public class RemoteDesktopServer {
     private static final Map<Socket, DataOutputStream> clients = new ConcurrentHashMap<>();
     private static final Map<Socket, DataOutputStream> fileClients = new ConcurrentHashMap<>();
     private static final Map<Socket, DataOutputStream> chatClients = new ConcurrentHashMap<>();
+    private static final Map<Socket, DataOutputStream> audioClients = new ConcurrentHashMap<>();
 
     private JButton sendButton;
     private static JButton callButton;
@@ -140,15 +140,7 @@ public class RemoteDesktopServer {
         callButton = new JButton("Call");
         JButton sendFile = new JButton("File");
 
-        callButton.addActionListener(e -> {
-            micOpen = !micOpen;
 
-            if (micOpen) {
-                callButton.setText("End Call");
-            } else {
-                callButton.setText("Call");
-            }
-        });
         sendFile.addActionListener(e -> {
             new Thread(() -> {
                 try {
@@ -288,7 +280,18 @@ public class RemoteDesktopServer {
                     Socket socket = serverAudioSocket.accept();
                     String clientAddress = socket.getInetAddress().getHostAddress();
                     appendToLogArea("Client " + clientAddress + " đã kết nối AudioServer");
-                    new Thread(() -> handleAudioClient(socket)).start();
+                    audioClients.put(socket, new DataOutputStream(socket.getOutputStream()));
+                   // new Thread(() -> handleAudioClient(socket)).start();
+                    callButton.addActionListener(e -> {
+                        micOpen = !micOpen;
+                        if (micOpen) {
+                            new Thread(() -> handleAudioClient(socket)).start();
+                            callButton.setText("End Call");
+                        } else {
+                            audioClients.remove(socket);
+                            callButton.setText("Call");
+                        }
+                    });
                 } catch (SocketException e) {
                     System.out.println("AudioServer đã đóng kết nối");
                     appendToLogArea("AudioServer đã đóng kết nối");
@@ -312,6 +315,7 @@ public class RemoteDesktopServer {
             chatCheckBox.setEnabled(true);
             remoteCheckBox.setEnabled(true);
             fileCheckBox.setEnabled(true);
+            audioCheckBox.setEnabled(true);
 
             try {
                 if (serverRemoteSocket != null && !serverRemoteSocket.isClosed()) {
@@ -355,6 +359,14 @@ public class RemoteDesktopServer {
                 }
             }
             fileClients.clear();
+            for (Socket socket : audioClients.keySet()) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            audioClients.clear();
         }
     }
 
@@ -405,6 +417,7 @@ public class RemoteDesktopServer {
     private void handleAudioClient(Socket socket) {
         AudioHandler.ConnectionListener listener = clientAddress -> {
             appendToLogArea("Client " + clientAddress + " đã ngắt kết nối AudioServer");
+
         };
 
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
@@ -416,8 +429,6 @@ public class RemoteDesktopServer {
         };
         worker.execute();
     }
-
-
 
     private void appendToLogArea(String message) {
         SwingUtilities.invokeLater(() -> {

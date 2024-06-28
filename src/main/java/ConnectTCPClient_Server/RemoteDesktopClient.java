@@ -200,91 +200,9 @@ public class RemoteDesktopClient extends JFrame {
         for (JButton button : buttons){
             button.setFont(new Font("JetBrains Mono Light", Font.BOLD, 11));}
     }
-    /*private @NotNull JButton getConnectButton() {
-        JButton connectButton = new JButton("Connect");
-        connectButton.addActionListener(e -> connectToServerInBackground());
-        return connectButton;
-    }*/
     private void disconnect() {
         closeConnections();
     }
-    private void connectToServerInBackground() {
-        disconnectButton.setEnabled(true);
-        setJButton(sendChatButton, remoteButton, sendFileButton); // set visible false
-
-        new SwingWorker<Void, Void>() {
-            private boolean fileServerConnected = false;
-            private boolean remoteServerConnected = false;
-            private boolean chatServerConnected = false;
-            private boolean audioServerConnected = false;
-
-            @Override
-            protected Void doInBackground() throws Exception {
-                String ip = Ip4Address.getText();
-
-                // Connect to file server
-                if (!checkFileConnection()) {
-                    try {
-                        connectToFileServer(ip);
-                        fileServerConnected = true;
-                    } catch (Exception e) {
-                        JOptionPane.showMessageDialog(null, e.getMessage(), "Lỗi kết nối File Server", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-
-                // Connect to remote server
-                if (!checkRemoteConnection()) {
-                    try {
-                        connectToRemoteServer(ip);
-                        remoteServerConnected = true;
-                    } catch (Exception e) {
-                        JOptionPane.showMessageDialog(null, e.getMessage(), "Lỗi kết nối Remote Server", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-                // Connect to chat server
-                if (!checkChatConnection()) {
-                    try {
-                        connectToChatServer(ip);
-                        chatServerConnected = true;
-                    } catch (Exception e) {
-                        JOptionPane.showMessageDialog(null, e.getMessage(), "Lỗi kết nối Chat Server", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-                // Connect to audio server
-                if (checkAudioConnection()) {
-                    try {
-                        connectToAudioServer(ip);
-                        audioServerConnected = true;
-                    } catch (Exception e) {
-                        JOptionPane.showMessageDialog(null, e.getMessage(), "Lỗi kết nối Audio Server", JOptionPane.ERROR_MESSAGE);
-                    }
-                }
-
-                return null;
-            }
-
-            @Override
-            protected void done() {
-                if (fileServerConnected || remoteServerConnected || chatServerConnected|| audioServerConnected) {
-
-                    disconnectButton.setEnabled(true);
-                    if (fileServerConnected) {
-                        receiveFile();
-                    }
-                    if (chatServerConnected) {
-                        startReceivingMessages();
-                    }
-                }
-                remoteButton.setEnabled(remoteServerConnected);
-                sendFileButton.setEnabled(fileServerConnected);
-                sendChatButton.setEnabled(chatServerConnected);
-                callButton.setEnabled(audioServerConnected);
-            }
-        }.execute();
-    }
-
-
-
     private void connectToFileServer(String ip) throws IOException {
         try {
             fileSocket = new Socket(ip, 49152);

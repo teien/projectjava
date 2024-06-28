@@ -19,7 +19,7 @@ public class AudioHandler extends Thread {
     public AudioHandler(Socket socket, ConnectionListener listener) throws LineUnavailableException, IOException {
         this.dis = new DataInputStream(socket.getInputStream());
         this.dos = new DataOutputStream(socket.getOutputStream());
-        this.format = new AudioFormat(44100, 16, 1, true, false);
+        this.format = new AudioFormat(48000, 16, 2, true, false);
         this.listener = listener;
         initMicrophone();
         initSpeaker();
@@ -46,7 +46,7 @@ public class AudioHandler extends Thread {
         speaker.start();
         System.out.println("AudioHandler is running...");
         try {
-            byte[] buffer = new byte[4096 * 4];
+            byte[] buffer = new byte[4096];
             int bytesRead;
             while (running) {
                 try {
@@ -54,6 +54,7 @@ public class AudioHandler extends Thread {
                     dos.write(buffer, 0, bytesRead);
                     dos.flush(); // Ensure the data is sent immediately
 
+                    System.out.println(bytesRead);
                     bytesRead = dis.read(buffer, 0, buffer.length);
                     if (bytesRead == -1) {
                         throw new IOException("End of stream reached");
