@@ -31,21 +31,18 @@ public class RemoteDesktopClient extends JFrame {
     private int serverScreenHeight;
     private final JTextField Ip4Address;
 
-    private final JButton disconnectButton;
     private final JButton remoteButton;
     private final JTextField chatInput ;
     private final JTextArea chatArea;
     private Socket chatSocket;
     private static DataOutputStream chatDos;
     private DataInputStream chatDis;
-    private final JButton sendFileButton;
-    private final JButton sendChatButton;
     private Socket audioSocket;
-
 
     public static void main(String[] args) {
         new RemoteDesktopClient().setVisible(true);
     }
+
     public RemoteDesktopClient() {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
@@ -75,7 +72,7 @@ public class RemoteDesktopClient extends JFrame {
         nameField = new JTextField(7);
         JLabel nameLabel = new JLabel("Name: ");
         //connectButton = getConnectButton();
-        disconnectButton = new JButton("Disconnect");
+        JButton disconnectButton = new JButton("Disconnect");
 
 
         ipPanel.add(ipLabel);
@@ -91,31 +88,31 @@ public class RemoteDesktopClient extends JFrame {
             try {
                 connectToRemoteServer(Ip4Address.getText());
                 startRemote();
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            } catch (InterruptedException ex) {
-                throw new RuntimeException(ex);
+            } catch (IOException | InterruptedException ex) {
+               System.out.println("Không thể kết nối tới server Remote tại " + Ip4Address.getText() + ": " + ex.getMessage());
             }
 
         });
-        disconnectButton.addActionListener(e -> disconnect());
+        disconnectButton.addActionListener(e -> closeConnections());
 
         JPanel inputPanel = new JPanel(new BorderLayout());
         chatInput = new JTextField();
-        sendChatButton = new JButton("Send Chat");
+        JButton sendChatButton = new JButton("Send Chat");
         sendChatButton.setEnabled(true);
         sendChatButton.addActionListener(e -> {
+
             try {
                 sendChatMessage();
             } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                System.out.println("Không thể Không thể kết nối tới server Chat tại "  + Ip4Address.getText() + ex.getMessage());
             }
+
         });
         inputPanel.add(chatInput, BorderLayout.CENTER);
         inputPanel.add(sendChatButton, BorderLayout.EAST);
 
         JPanel buttonPanel = new JPanel(new FlowLayout());
-        sendFileButton = getjButton();
+        JButton sendFileButton = getjButton();
         callButton = new JButton("Call");
         callButton.addActionListener(e -> {
             try {
@@ -130,7 +127,7 @@ public class RemoteDesktopClient extends JFrame {
                 }
 
             } catch (LineUnavailableException | IOException ex) {
-                throw new RuntimeException(ex);
+                System.out.println("Không thể kết nối tới server Audio tại " + Ip4Address.getText() + ": " + ex.getMessage());
             }
         });
 
@@ -148,12 +145,10 @@ public class RemoteDesktopClient extends JFrame {
         add(chatPanel, BorderLayout.CENTER);
         add(inputPanel, BorderLayout.SOUTH);
         add(northPanel, BorderLayout.NORTH);
-        setFontButton( disconnectButton, remoteButton, sendFileButton, callButton,  sendChatButton);
-        setButtonSize( disconnectButton, remoteButton, sendFileButton, callButton,  sendChatButton);
+        setFontButton(disconnectButton, remoteButton, sendFileButton, callButton, sendChatButton);
+        setButtonSize(disconnectButton, remoteButton, sendFileButton, callButton, sendChatButton);
 
     }
-
-
 
     private void disConnections(Socket socket, DataInputStream dis, DataOutputStream dos) {
         try (
@@ -166,14 +161,6 @@ public class RemoteDesktopClient extends JFrame {
             System.err.println("Lỗi khi đóng kết nối: " + e.getMessage());
         }
     }
-
-
-
-    private void setJButton(JButton... JButton) {
-        for (JButton jbutton : JButton) {
-            jbutton.setEnabled(false);
-        }
-    }
     private @NotNull JButton getjButton() {
         JButton sendFileButton = new JButton("Send File");
         sendFileButton.addActionListener(e ->
@@ -184,7 +171,7 @@ public class RemoteDesktopClient extends JFrame {
                 if (checkFileConnection()) {
                 sendFile();}
             } catch (Exception ex) {
-                throw new RuntimeException(ex);
+                    System.out.println("Không thể kết nối tới server truyền file tại " + Ip4Address.getText() + ": " + ex.getMessage());
             }
         });
         return sendFileButton;
@@ -200,9 +187,7 @@ public class RemoteDesktopClient extends JFrame {
         for (JButton button : buttons){
             button.setFont(new Font("JetBrains Mono Light", Font.BOLD, 11));}
     }
-    private void disconnect() {
-        closeConnections();
-    }
+
     private void connectToFileServer(String ip) throws IOException {
         try {
             fileSocket = new Socket(ip, 49152);
@@ -211,6 +196,7 @@ public class RemoteDesktopClient extends JFrame {
             System.out.println("Đã kết nối tới server truyền file");
             receiveFile();
         } catch (ConnectException e) {
+            JOptionPane.showMessageDialog(null, "Không thể kết nối tới server truyền file tại " + ip );
             throw new ConnectException("Không thể kết nối tới server truyền file tại " + ip + ": " + e.getMessage());
         } catch (IOException e) {
             throw new IOException("Lỗi khi kết nối tới server truyền file: " + e.getMessage());
@@ -224,6 +210,7 @@ public class RemoteDesktopClient extends JFrame {
             System.out.println("Đã kết nối tới server chat");
             startReceivingMessages();
         } catch (ConnectException e) {
+            JOptionPane.showMessageDialog(null, "Không thể kết nối tới server Chat tại " + ip );
             throw new ConnectException("Không thể kết nối tới server chat tại " + ip + ": " + e.getMessage());
         } catch (IOException e) {
             throw new IOException("Lỗi khi kết nối tới server chat: " + e.getMessage());
@@ -237,6 +224,7 @@ public class RemoteDesktopClient extends JFrame {
             dis = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
             System.out.println("Đã kết nối tới server");
         } catch (ConnectException e) {
+            JOptionPane.showMessageDialog(null, "Không thể kết nối tới server Remote tại " + ip );
             throw new ConnectException("Không thể kết nối tới server Remote tại " + ip + ": " + e.getMessage());
         } catch (IOException e) {
             throw new IOException("Lỗi khi kết nối tới server: " + e.getMessage());
@@ -247,31 +235,13 @@ public class RemoteDesktopClient extends JFrame {
             audioSocket = new Socket(ip, 49149);
             System.out.println("Đã kết nối tới server");
         } catch (ConnectException e) {
+            JOptionPane.showMessageDialog(null, "Không thể kết nối tới server Remote tại " + ip );
             throw new ConnectException("Không thể kết nối tới server Remote tại " + ip + ": " + e.getMessage());
         } catch (IOException e) {
             throw new IOException("Lỗi khi kết nối tới server: " + e.getMessage());
         }
     }
-    private void connectToOneServer(String svName) {
-        String ip = Ip4Address.getText();
-        new SwingWorker<Void, Void>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                try {
-                    switch (svName) {
-                        case "Remote" -> connectToRemoteServer(ip);
-                        case "File" -> connectToFileServer(ip);
-                        case "Chat" -> connectToChatServer(ip);
-                        case "Audio" -> connectToAudioServer(ip);
-                    }
-                } catch (Exception e) {
-                    JOptionPane.showMessageDialog(null, e.getMessage(), "Lỗi kết nối " + svName + " Server", JOptionPane.ERROR_MESSAGE);
-                }
-                return null;
-            }
-        }.execute();
 
-    }
     private void remoteData() {
         try {
             if (checkRemoteConnection()) {
@@ -281,55 +251,8 @@ public class RemoteDesktopClient extends JFrame {
                 serverScreenHeight = dis.readInt();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Lỗi khi gửi dữ liệu remote: " + e.getMessage());
         }
-    }
-    private boolean checkRemoteConnection() {
-        if (socket == null || socket.isClosed()) {
-            return false;
-        }
-        return socket.isConnected() && !socket.isInputShutdown() && !socket.isOutputShutdown() &&
-                dis != null && dos != null;
-    }
-    private boolean checkFileConnection() {
-        if (fileSocket == null || fileSocket.isClosed()) {
-            return false;
-        }
-        return fileSocket.isConnected() && !fileSocket.isInputShutdown() && !fileSocket.isOutputShutdown() &&
-                fileDis != null && fileDos != null;
-    }
-    private boolean checkChatConnection() {
-        if (chatSocket == null || chatSocket.isClosed()) {
-            return false;
-        } else return chatSocket.isConnected() && !chatSocket.isInputShutdown() && !chatSocket.isOutputShutdown() &&
-                chatDis != null && chatDos != null;
-    }
-    private boolean checkAudioConnection() {
-        if (audioSocket == null || audioSocket.isClosed()) {
-            return true;
-        }
-        return !audioSocket.isConnected() || audioSocket.isInputShutdown() || audioSocket.isOutputShutdown();
-    }
-
-    private void closeConnections() {
-        try {
-            if (dis != null) dis.close();
-            if (dos != null) dos.close();
-            if (socket != null) socket.close();
-            if (chatDis != null) chatDis.close();
-            if (chatDos != null) chatDos.close();
-            if (chatSocket != null) chatSocket.close();
-            if (fileDis != null) fileDis.close();
-            if (fileDos != null) fileDos.close();
-            if (fileSocket != null) fileSocket.close();
-            if (audioSocket != null) audioSocket.close();
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-    }
-    private void startCall() throws LineUnavailableException, IOException {
-       AudioHandler audioHandler = new AudioHandler(audioSocket, listener -> {});
-       audioHandler.start();
     }
     private void startRemote() throws IOException, InterruptedException {
 
@@ -399,7 +322,7 @@ public class RemoteDesktopClient extends JFrame {
             @Override
             protected void process(List<BufferedImage> chunks) {
                 if (!chunks.isEmpty()) {
-                    currentImage = chunks.get(chunks.size() - 1);
+                    currentImage = chunks.getLast();
                     updateImage();
                 }
             }
@@ -424,8 +347,56 @@ public class RemoteDesktopClient extends JFrame {
                 updateImage();
             }
         });
-       frame.repaint();
+        frame.repaint();
     }
+    private boolean checkRemoteConnection() {
+        if (socket == null || socket.isClosed()) {
+            return false;
+        }
+        return socket.isConnected() && !socket.isInputShutdown() && !socket.isOutputShutdown() &&
+                dis != null && dos != null;
+    }
+    private boolean checkFileConnection() {
+        if (fileSocket == null || fileSocket.isClosed()) {
+            return false;
+        }
+        return fileSocket.isConnected() && !fileSocket.isInputShutdown() && !fileSocket.isOutputShutdown() &&
+                fileDis != null && fileDos != null;
+    }
+    private boolean checkChatConnection() {
+        if (chatSocket == null || chatSocket.isClosed()) {
+            return false;
+        } else return chatSocket.isConnected() && !chatSocket.isInputShutdown() && !chatSocket.isOutputShutdown() &&
+                chatDis != null && chatDos != null;
+    }
+    private boolean checkAudioConnection() {
+        if (audioSocket == null || audioSocket.isClosed()) {
+            return true;
+        }
+        return !audioSocket.isConnected() || audioSocket.isInputShutdown() || audioSocket.isOutputShutdown();
+    }
+
+    private void closeConnections() {
+        try {
+            if (dis != null) dis.close();
+            if (dos != null) dos.close();
+            if (socket != null) socket.close();
+            if (chatDis != null) chatDis.close();
+            if (chatDos != null) chatDos.close();
+            if (chatSocket != null) chatSocket.close();
+            if (fileDis != null) fileDis.close();
+            if (fileDos != null) fileDos.close();
+            if (fileSocket != null) fileSocket.close();
+            if (audioSocket != null) audioSocket.close();
+        } catch (IOException ex) {
+            System.err.println("Lỗi khi đóng kết nối: " + ex.getMessage());
+        }
+    }
+    private void startCall() throws LineUnavailableException, IOException {
+       AudioHandler audioHandler = new AudioHandler(audioSocket, listener -> {});
+       audioHandler.start();
+    }
+
     private Point adjustMouseCoordinates(Point clientPoint) {
         Dimension frameSize = frame.getContentPane().getSize();
         int x = (int) (clientPoint.x * (serverScreenWidth / (double) frameSize.width));
@@ -466,7 +437,7 @@ public class RemoteDesktopClient extends JFrame {
                 } catch (SocketException ex) {
                     disConnections(socket,dis,dos);
                 } catch (IOException ex) {
-                    ex.printStackTrace();
+                    System.err.println("Lỗi khi gửi sự kiện chuột: " + ex.getMessage());
                 }
             }
         };
@@ -497,7 +468,7 @@ public class RemoteDesktopClient extends JFrame {
                 } catch (SocketException ex) {
                     System.out.println("Server đã đóng kết nối");
                 } catch (IOException ex) {
-                    ex.printStackTrace();
+                    System.err.println("Lỗi khi gửi sự kiện phím: " + ex.getMessage());
                 }
             }
         };
@@ -551,7 +522,7 @@ public class RemoteDesktopClient extends JFrame {
                 @Override
                 protected void process(List<Integer> chunks) {
                     if (!chunks.isEmpty()) {
-                        int mostRecentValue = chunks.get(chunks.size() - 1);
+                        int mostRecentValue = chunks.getLast();
                         progressBar.setValue(mostRecentValue);
                     }
                 }
@@ -562,7 +533,7 @@ public class RemoteDesktopClient extends JFrame {
                         get();
                         chatArea.append("File " + file.getName() + " đã được gửi thành công.\n");
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        System.err.println("Lỗi khi gửi file: " + e.getMessage());
                         JOptionPane.showMessageDialog(null, "Lỗi khi gửi file: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                     } finally {
 
@@ -604,7 +575,7 @@ public class RemoteDesktopClient extends JFrame {
                 } catch (SocketException | EOFException e) {
                     System.out.println("Server đã đóng kết nối");
                 } catch (IOException e) {
-                    e.printStackTrace();
+                   System.err.println("Lỗi khi nhận file: " + e.getMessage());
                 }
                 return null;
             }
@@ -636,7 +607,7 @@ public class RemoteDesktopClient extends JFrame {
                         System.out.println("Server đã đóng kết nối");
                         break;
                     } catch (IOException e) {
-                        e.printStackTrace();
+                      System.err.println("Lỗi khi nhận tin nhắn: " + e.getMessage());
                         break;
                     }
                 }

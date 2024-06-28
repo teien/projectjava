@@ -193,7 +193,6 @@ public class RemoteDesktopServer {
             }
         }
     }
-
     private void startChatServer() {
         try {
             serverChatSocket = new ServerSocket(49151);
@@ -220,7 +219,6 @@ public class RemoteDesktopServer {
             e.printStackTrace();
         }
     }
-
     private void startRemoteServer() {
         try {
             serverRemoteSocket = new ServerSocket(49150);
@@ -245,7 +243,6 @@ public class RemoteDesktopServer {
             e.printStackTrace();
         }
     }
-
     private void startFileServer() {
         try {
             serverFileSocket = new ServerSocket(49152);
@@ -270,7 +267,6 @@ public class RemoteDesktopServer {
             e.printStackTrace();
         }
     }
-
     private void startAudioServer() {
         try {
             serverAudioSocket = new ServerSocket(49149);
