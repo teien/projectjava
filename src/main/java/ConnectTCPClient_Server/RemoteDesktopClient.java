@@ -18,6 +18,7 @@ public class RemoteDesktopClient extends JFrame {
     private final JTextField nameField;
     private final JPanel chatPanel;
     private final JButton callButton;
+    private final JButton connectButton;
     private Socket socket;
     private DataInputStream dis;
     private DataOutputStream dos;
@@ -71,7 +72,7 @@ public class RemoteDesktopClient extends JFrame {
         JLabel ipLabel = new JLabel("IP4: ");
         nameField = new JTextField(7);
         JLabel nameLabel = new JLabel("Name: ");
-        //connectButton = getConnectButton();
+        connectButton = new JButton("Connect");
         JButton disconnectButton = new JButton("Disconnect");
 
 
@@ -79,7 +80,7 @@ public class RemoteDesktopClient extends JFrame {
         ipPanel.add(Ip4Address);
         ipPanel.add(nameLabel);
         ipPanel.add(nameField );
-       // ipPanel.add(connectButton);
+        ipPanel.add(connectButton);
         ipPanel.add(disconnectButton);
 
         remoteButton = new JButton("Remote");
@@ -119,15 +120,26 @@ public class RemoteDesktopClient extends JFrame {
                 if (callButton.getText().equals("Call")) {
                     if (checkAudioConnection()) {
                         connectToAudioServer(Ip4Address.getText());}
-                    startCall();
+                    AudioHandler.startSending();
                     callButton.setText("End Call");
                 } else {
-                    disConnections(audioSocket, null, null);
+                    AudioHandler.stopSending();
+
                     callButton.setText("Call");
                 }
 
-            } catch (LineUnavailableException | IOException ex) {
+            } catch (IOException ex) {
                 System.out.println("Không thể kết nối tới server Audio tại " + Ip4Address.getText() + ": " + ex.getMessage());
+            }
+        });
+        connectButton.addActionListener(e -> {
+            try {
+                connectToChatServer(Ip4Address.getText());
+                connectToAudioServer(Ip4Address.getText());
+                connectToFileServer(Ip4Address.getText());
+                connectToRemoteServer(Ip4Address.getText());
+            } catch (IOException ex) {
+                System.out.println("Không thể kết nối tới server Chat tại " + Ip4Address.getText() + ": " + ex.getMessage());
             }
         });
 
@@ -234,11 +246,15 @@ public class RemoteDesktopClient extends JFrame {
         try {
             audioSocket = new Socket(ip, 49149);
             System.out.println("Đã kết nối tới server");
+            AudioHandler audioHandler = new AudioHandler(audioSocket);
+            audioHandler.start();
         } catch (ConnectException e) {
             JOptionPane.showMessageDialog(null, "Không thể kết nối tới server Remote tại " + ip );
             throw new ConnectException("Không thể kết nối tới server Remote tại " + ip + ": " + e.getMessage());
         } catch (IOException e) {
             throw new IOException("Lỗi khi kết nối tới server: " + e.getMessage());
+        } catch (LineUnavailableException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -392,10 +408,7 @@ public class RemoteDesktopClient extends JFrame {
             System.err.println("Lỗi khi đóng kết nối: " + ex.getMessage());
         }
     }
-    private void startCall() throws LineUnavailableException, IOException {
-       AudioHandler audioHandler = new AudioHandler(audioSocket, listener -> {});
-       audioHandler.startAudio();
-    }
+
 
     private Point adjustMouseCoordinates(Point clientPoint) {
         Dimension frameSize = frame.getContentPane().getSize();

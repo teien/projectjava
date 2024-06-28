@@ -10,20 +10,17 @@ public class AudioHandler {
     private final DataInputStream dis;
     private final DataOutputStream dos;
     private final AudioFormat format;
-    private final ConnectionListener listener;
     private TargetDataLine microphone;
     private SourceDataLine speaker;
     private volatile boolean running = true;
-    private final Socket socket;
+    private static volatile boolean sending = false;
 
-    public AudioHandler(Socket socket, ConnectionListener listener) throws LineUnavailableException, IOException {
+    public AudioHandler(Socket socket) throws LineUnavailableException, IOException {
         this.dis = new DataInputStream(socket.getInputStream());
         this.dos = new DataOutputStream(socket.getOutputStream());
         this.format = new AudioFormat(48000, 16, 2, true, false);
-        this.listener = listener;
         initMicrophone();
         initSpeaker();
-        this.socket = socket;
     }
 
     private void initMicrophone() throws LineUnavailableException {
@@ -38,11 +35,7 @@ public class AudioHandler {
         speaker.open(format);
     }
 
-    public interface ConnectionListener {
-        void onClientDisconnected(String clientAddress);
-    }
-
-    public void startAudio() {
+    public void start() {
         running = true;
         Thread sendThread = new Thread(this::sendAudio);
         Thread receiveThread = new Thread(this::receiveAudio);
@@ -50,20 +43,32 @@ public class AudioHandler {
         receiveThread.start();
     }
 
-    void sendAudio() {
+    public static void startSending() {
+        sending = true;
+    }
+
+    public static void stopSending() {
+        sending = false;
+    }
+
+    private void sendAudio() {
         try {
             microphone.start();
             byte[] buffer = new byte[4096];
             while (running) {
-                int bytesRead = microphone.read(buffer, 0, buffer.length);
-                dos.write(buffer, 0, bytesRead);
-                dos.flush();
-                System.out.println("Sent " + bytesRead + " bytes.");
+                if (sending) {
+                    int bytesRead = microphone.read(buffer, 0, buffer.length);
+                    dos.write(buffer, 0, bytesRead);
+                    dos.flush();
+                    System.out.println("Sent " + bytesRead + " bytes.");
+                } else {
+                    // Sleep for a short period to reduce CPU usage when not sending
+                    Thread.sleep(100);
+                }
             }
-        } catch (IOException e) {
-            System.out.println("Client đã ngắt kết nối audio");
-            listener.onClientDisconnected(socket.getInetAddress().getHostAddress());
-            stopAudio();
+        } catch (IOException | InterruptedException e) {
+            System.out.println("Error while sending audio: " + e.getMessage());
+            stop();
         }
     }
 
@@ -80,13 +85,12 @@ public class AudioHandler {
                 System.out.println("Received " + bytesRead + " bytes.");
             }
         } catch (IOException e) {
-            System.out.println("Client đã ngắt kết nối audio");
-            listener.onClientDisconnected(socket.getInetAddress().getHostAddress());
-            stopAudio();
+            System.out.println("Error while receiving audio: " + e.getMessage());
+            stop();
         }
     }
 
-    public void stopAudio() {
+    public void stop() {
         running = false;
         if (microphone != null) {
             microphone.stop();
@@ -99,9 +103,8 @@ public class AudioHandler {
         try {
             dis.close();
             dos.close();
-            socket.close();
         } catch (IOException e) {
-            System.out.println("Lỗi khi đóng DataInputStream/DataOutputStream hoặc socket: " + e.getMessage());
+            System.out.println("Error closing streams: " + e.getMessage());
         }
     }
 }

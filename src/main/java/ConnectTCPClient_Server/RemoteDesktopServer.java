@@ -151,6 +151,19 @@ public class RemoteDesktopServer {
             }).start();
         });
 
+
+        callButton.addActionListener(e -> {
+                    if (!micOpen) {
+                        AudioHandler.startSending();
+                        micOpen = true;
+                        callButton.setText("End Call");
+                    } else {
+                        AudioHandler.stopSending();
+                        micOpen = false;
+                        callButton.setText("Call");
+                    }
+                });
+
         inputPanel.add(chatField, BorderLayout.CENTER);
         inputPanel.add(sendButton, BorderLayout.EAST);
         inputPanel.add(sendFile, BorderLayout.WEST);
@@ -277,17 +290,7 @@ public class RemoteDesktopServer {
                     String clientAddress = socket.getInetAddress().getHostAddress();
                     appendToLogArea("Client " + clientAddress + " đã kết nối AudioServer");
                     audioClients.put(socket, new DataOutputStream(socket.getOutputStream()));
-                   // new Thread(() -> handleAudioClient(socket)).start();
-                    callButton.addActionListener(e -> {
-                        micOpen = !micOpen;
-                        if (micOpen) {
-                            new Thread(() -> handleAudioClient(socket)).start();
-                            callButton.setText("End Call");
-                        } else {
-                            audioClients.remove(socket);
-                            callButton.setText("Call");
-                        }
-                    });
+                    new Thread(() -> handleAudioClient(socket)).start();
                 } catch (SocketException e) {
                     System.out.println("AudioServer đã đóng kết nối");
                     appendToLogArea("AudioServer đã đóng kết nối");
@@ -302,6 +305,9 @@ public class RemoteDesktopServer {
             e.printStackTrace();
         }
     }
+
+
+
 
     private void stopServer() {
         if (isRunning) {
@@ -411,15 +417,15 @@ public class RemoteDesktopServer {
         worker.execute();
     }
     private void handleAudioClient(Socket socket) {
-        AudioHandler.ConnectionListener listener = clientAddress -> {
+       /* AudioHandler.ConnectionListener listener = clientAddress -> {
             appendToLogArea("Client " + clientAddress + " đã ngắt kết nối AudioServer");
 
         };
-
+*/
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() throws LineUnavailableException, IOException {
-                new AudioHandler(socket, listener).startAudio();
+                new AudioHandler(socket).start();
                 return null;
             }
         };
@@ -431,6 +437,7 @@ public class RemoteDesktopServer {
             logArea.append(message + "\n");
             logArea.setCaretPosition(logArea.getDocument().getLength());
             System.out.println(message);
+
         });
     }
     private void appendToChatArea(String message) {
