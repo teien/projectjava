@@ -78,7 +78,7 @@ public class ServiceManager {
                 Thread.sleep(5000); // Wait for the service to start
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                e.printStackTrace();
+                System.out.println("Interrupted while waiting for service to start.");
             }
         }
 
@@ -100,7 +100,7 @@ public class ServiceManager {
 
             return (JSONArray) parser.parse(reader);
         } catch (IOException | ParseException e) {
-            e.printStackTrace();
+            System.out.println("Error reading sensor data: " + e.getMessage());
         }
 
         return null;
@@ -121,7 +121,7 @@ public class ServiceManager {
             }
             process.waitFor();
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+            System.out.println("Error executing command: " + e.getMessage());
             Thread.currentThread().interrupt();
         }
         return output.toString();

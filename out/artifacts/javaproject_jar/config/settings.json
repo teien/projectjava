@@ -50,12 +50,12 @@
     "Style": {
         "bgColor": 1309486352,
         "fontType1": "JetBrains Mono Light",
-        "fontType2": "JetBrains Mono NL ExtraLight",
+        "fontType2": "JetBrains Mono SemiBold",
         "fontSize1": 12,
-        "fontColor2": -13261,
-        "fontColor1": -1,
+        "fontColor2": -3394816,
+        "fontColor1": -16724788,
         "fontSize2": 14,
-        "opacity": 1
+        "opacity": 0.84
     },
     "Paths": {"sensorDataFilePath": "C:\\ProgramData\\sensorData.json"},
     "Chart": {"chartWidth": 214}

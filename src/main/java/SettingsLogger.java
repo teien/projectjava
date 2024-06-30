@@ -114,7 +114,7 @@ public class SettingsLogger {
         try (FileWriter writer = new FileWriter(settingsFile)) {
             writer.write(settings.toString(4));
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Đã xảy ra lỗi khi lưu cài đặt.");
         }
     }
 
@@ -126,14 +126,13 @@ public class SettingsLogger {
                 System.out.println("Tệp tin cài đặt đã được tạo.");
             } catch (IOException e) {
                 System.out.println("Đã xảy ra lỗi khi tạo tệp tin cài đặt.");
-                e.printStackTrace();
             }
         }
         JSONObject settings;
         try (FileReader reader = new FileReader(settingsFile)) {
             settings = new JSONObject(new JSONTokener(reader));
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Đã xảy ra lỗi khi đọc tệp tin cài đặt.");
             settings = new JSONObject(DEFAULT_SETTINGS);
         }
         return settings;

@@ -3,6 +3,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.net.URI;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -578,7 +579,7 @@ public class SystemMonitorUI extends JFrame {
             }
             repaint();
         } catch (Exception e) {
-            e.printStackTrace();
+           System.out.println("Error updating system info: " + e.getMessage());
         }
     }
 
@@ -605,13 +606,13 @@ public class SystemMonitorUI extends JFrame {
                     })
                     .exceptionally(ex -> {
                         SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
-                        ex.printStackTrace();
+                       System.out.println("Weather update failure");
                         return false;
                     });
             boolean result = future.join();
             System.out.println("Weather update " + (result ? "success" : "failure"));
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Weather update failure");
         }
     }
 

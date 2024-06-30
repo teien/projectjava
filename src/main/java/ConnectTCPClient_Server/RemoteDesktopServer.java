@@ -22,8 +22,7 @@ public class RemoteDesktopServer {
     private ServerSocket serverRemoteSocket;
     private ServerSocket serverChatSocket;
     private boolean isRunning = false;
-    private JButton startButton;
-    private JButton stopButton;
+
     private JTextArea chatArea;
     private JTextArea logArea;
     private JTextField chatField;
@@ -37,10 +36,14 @@ public class RemoteDesktopServer {
     private static final Map<Socket, DataOutputStream> chatClients = new ConcurrentHashMap<>();
     private static final Map<Socket, DataOutputStream> audioClients = new ConcurrentHashMap<>();
 
+
+    private JButton startButton;
+    private JButton stopButton;
     private JButton sendButton;
     private static JButton callButton;
     private JCheckBox audioCheckBox;
     private ServerSocket serverAudioSocket;
+    private JButton sendFile;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new RemoteDesktopServer().createAndShowGUI());
@@ -138,8 +141,11 @@ public class RemoteDesktopServer {
         chatField = new JTextField(20);
         sendButton = new JButton("Send");
         callButton = new JButton("Call");
-        JButton sendFile = new JButton("File");
+        sendFile = new JButton("File");
 
+        sendButton.setEnabled(false);
+        callButton.setEnabled(false);
+        sendFile.setEnabled(false);
 
         sendFile.addActionListener(e -> {
             new Thread(() -> {
@@ -194,15 +200,19 @@ public class RemoteDesktopServer {
 
             if (chatCheckBox.isSelected()) {
                 new Thread(this::startChatServer).start();
+                sendButton.setEnabled(true);
             }
             if (remoteCheckBox.isSelected()) {
                 new Thread(this::startRemoteServer).start();
+
             }
             if (fileCheckBox.isSelected()) {
                 new Thread(this::startFileServer).start();
+                sendFile.setEnabled(true);
             }
             if (audioCheckBox.isSelected()) {
                 new Thread(this::startAudioServer).start();
+                callButton.setEnabled(true);
             }
         }
     }
@@ -214,8 +224,6 @@ public class RemoteDesktopServer {
                 try {
                     Socket socket = serverChatSocket.accept();
                     String clientAddress = socket.getInetAddress().getHostAddress();
-                   //lam sao de check khi client mat ket noi
-
                     appendToLogArea("Client " + clientAddress + " đã kết nối ChatServer");
                     new Thread(() -> handleChatClient(socket)).start();
                 } catch (SocketException e) {
@@ -325,16 +333,19 @@ public class RemoteDesktopServer {
                 }
                 if (serverChatSocket != null && !serverChatSocket.isClosed()) {
                     serverChatSocket.close();
+                    sendButton.setEnabled(false);
                 }
                 if (serverFileSocket != null && !serverFileSocket.isClosed()) {
                     serverFileSocket.close();
+                    sendFile.setEnabled(false);
                 }
                 if (serverAudioSocket != null && !serverAudioSocket.isClosed()) {
                     serverAudioSocket.close();
+                    callButton.setEnabled(false);
                 }
                 appendToLogArea("Server đã dừng");
             } catch (IOException e) {
-                e.printStackTrace();
+               System.out.println("Lỗi khi dừng server: " + e.getMessage());
             }
 
             for (Socket socket : clients.keySet()) {
