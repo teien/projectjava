@@ -20,6 +20,17 @@
             <version>6.6.0</version>
         </dependency>
         <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.5.4</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>2.1.0-alpha1</version> <!-- Update this to the version you want to use -->
@@ -50,6 +61,11 @@
             <version>2.11.0</version>
         </dependency>
         <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv-platform</artifactId>
+            <version>1.5.10</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.clerezza.ext</groupId>
             <artifactId>org.json.simple</artifactId>
             <version>0.4</version>
@@ -64,6 +80,10 @@
             <artifactId>json</artifactId>
             <version>20231013</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.jitsi/libjitsi -->
+
+
+
     </dependencies>
     <build>
         <plugins>

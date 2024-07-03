@@ -1,8 +1,10 @@
 @echo off
-setlocal
-set current_dir=%~dp0
-set binPath=%current_dir%ConsoleApp2.exe
-sc create HardwareMonitorService binPath= "%binPath%" start= auto
-echo Service HardwareMonitorService đã được tạo với binPath=%binPath%
-pause
+REM Lấy đường dẫn hiện tại của file BAT
+set "currentPath=%~dp0"
 
+REM Tạo dịch vụ với binPath là đường dẫn hiện tại của file BAT và ứng dụng
+sc create HardwareMonitorService binPath= "%currentPath%\ConsoleApp2.exe"
+
+REM Thông báo hoàn thành
+echo Dịch vụ HardwareMonitorService đã được tạo với binPath= "%currentPath%\ConsoleApp2.exe"
+pause
