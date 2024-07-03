@@ -1,17 +1,4 @@
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.net.URI;
-import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+package Main;
 
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
@@ -19,8 +6,29 @@ import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinUser;
 import org.json.JSONObject;
 import oshi.SystemInfo;
-import oshi.hardware.*;
+import oshi.hardware.CentralProcessor;
+import oshi.hardware.GlobalMemory;
+import oshi.hardware.HardwareAbstractionLayer;
+import oshi.hardware.NetworkIF;
 import oshi.software.os.OperatingSystem;
+import settings.SettingUI;
+import settings.SettingsLogger;
+import settings.SettingsPanel;
+import system.*;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class SystemMonitorUI extends JFrame {
 
@@ -122,204 +130,25 @@ public class SystemMonitorUI extends JFrame {
         }));
     }
 
-    public void initializeUI() {
-        setMaximumSize(new Dimension(1000, getMaximumSize().height));
-        int w = settings.getJSONObject("Screen").getInt("width");
-        int h = settings.getJSONObject("Screen").getInt("height");
-        setSize(new Dimension(w, h));
-        int xc = settings.getJSONObject("Screen").getInt("xc");
-        int yc = settings.getJSONObject("Screen").getInt("yc");
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        int x = screenSize.width - getWidth() + xc;
-        setLocation(x, yc);
-
-        setResizable(false);
-        setUndecorated(true);
-        setAlwaysOnTop(false);
-        if (settings.getJSONObject("Screen").getBoolean("alwaysOnTop")) {
-            setAlwaysOnTop(true);
-        }
-
-        setFocusableWindowState(false);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setBackground(new Color(0, 0, 0, 0));
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        panel.setOpaque(false);
-        panel.setBackground(new Color(0, 0, 0, 0));
-        setBackgroundColorUpdate();
-        setOpacityUpdate();
-
-        timeLabel = createLabel("HH:mm");
-        timeLabel.setBorder(new EmptyBorder(0, 12,0 , 0));
-        timeLabel.setName("timeLabel");
-        dateLabel = createLabel(" EEE, dd MMM yyyy");
-        dateLabel.setName("dateLabel");
-        weatherLabel = createLabel("Weather: --");
-        BufferedImage blankImage = new BufferedImage(50, 50, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = blankImage.createGraphics();
-        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
-        g2d.fillRect(0, 0, 50, 50);
-        g2d.dispose();
-        ImageIcon transparentIcon = new ImageIcon(blankImage);
-        weatherLabel.setIcon(transparentIcon);
-        kernelLabel = createLabel(" Computer:-- ");
-        uptimeLabel = createLabel(" Uptime: 0h 0m 0s");
-        cpuUsageLabel = createLabel(" CPU Usage: 0%");
-        cpuTemperatureLabel = createLabel(" CPU Temperature: 0°C");
-        cpuNameLabel = createLabel(" CPU: --");
-        processLabel = createLabel(" Process: --");
-        processListLabel[0] = createLabel("  --");
-        processListLabel[1] = createLabel("  --");
-        processListLabel[2] = createLabel("  --");
-        processListLabel[3] = createLabel("  --");
-
-
-        gpuNameLabel = createLabel(" GPU: --");
-        gpuTemperatureLabel = createLabel(" GPU Temperature: 0°C");
-        gpuUsageLabel = createLabel(" GPU Usage: 0%");
-
-        ramTotalLabel = createLabel(" RAM Total: 0 GiB");
-        ramInUseLabel = createLabel(" In Use: 0 GiB");
-        ramFreeLabel = createLabel(" Free: 0 GiB");
-
-
-        ssdTotalLabel = createLabel(" SSD Total: 0 GiB");
-        ssdFreeLabel = createLabel(" Free: 0 GiB");
-        ssdUsedLabel = createLabel(" Used: 0 GiB");
-
-        networkIPLabel = createLabel(" IP: --");
-        networkDownloadSpeedLabel = createLabel(" Download Speed: 0 kB/s");
-        networkUploadSpeedLabel = createLabel(" Upload Speed: 0 kB/s");
-        networkDownloadTotalLabel = createLabel(" Download Total: 0 MiB");
-        networkUploadTotalLabel = createLabel(" Upload Total: 0 KiB");
-        SYSTEMLabel = createSeparator("SYSTEM");
-        CPULabel = createSeparator("CPU");
-        GPULabel = createSeparator("GPU");
-        RAMLabel = createSeparator("RAM");
-        SSDLabel = createSeparator("STORAGE");
-        NETWORKLabel = createSeparator("NETWORK");
-        PROCESSESLabel = createSeparator("PROCESSES");
-
-        panel.add(timeLabel);
-        panel.add(dateLabel);
-        if (showWeather) {
-            if (settings.getJSONObject("Show/Hide").getBoolean("showWeather")) {
-                panel.add(weatherLabel);
+    public static void initializeSystemInfo() {
+        SystemInfo systemInfo = new SystemInfo();
+        CentralProcessor processor = systemInfo.getHardware().getProcessor();
+        //  cpuNumber = processor.getPhysicalProcessorCount() * processor.getPhysicalPackageCount();
+        cpuNumber = processor.getLogicalProcessorCount();
+        hal = systemInfo.getHardware();
+        os = systemInfo.getOperatingSystem();
+        List<NetworkIF> networkIFs = hal.getNetworkIFs();
+        if (!networkIFs.isEmpty()) {
+            for (NetworkIF networkIF : networkIFs) {
+                if (networkIF.isConnectorPresent() && networkIF.getIPv4addr().length > 0 && networkIF.getSpeed() > 0 && networkIF.getIfOperStatus().equals(NetworkIF.IfOperStatus.UP)) {
+                    SystemMonitorUI.networkIF = networkIF;
+                    break;
+                }
             }
         }
-        if (settings.getJSONObject("Show/Hide").getBoolean("showSYSTEMTitle")) {
-            panel.add(SYSTEMLabel);
-        }
-        if (settings.getJSONObject("Show/Hide").getBoolean("showKernel")) {
-            panel.add(kernelLabel);
-        }
-        if (settings.getJSONObject("Show/Hide").getBoolean("showUptime")) {
-            panel.add(uptimeLabel);
-        }
-        if (showCpu) {
-            if (settings.getJSONObject("Show/Hide").getBoolean("showCPUTitle")) {
-                panel.add(CPULabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showCpuName")) {
-                panel.add(cpuNameLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showCpuUsage")) {
-                panel.add(cpuUsageLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showCpuTemp")) {
-                panel.add(cpuTemperatureLabel);
-            }
-        }
-        if (showProcess) {
-            if (settings.getJSONObject("Show/Hide").getBoolean("showProcessTitle")) {
-                panel.add(PROCESSESLabel);
 
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showProcess")) {
-                panel.add(processLabel);
-            }
-            panel.add(processListLabel[0]);
-            panel.add(processListLabel[1]);
-            panel.add(processListLabel[2]);
-            panel.add(processListLabel[3]);
-        }
+        // reset panel system.NetworkMonitor
 
-
-        if (showGpu) {
-            if (settings.getJSONObject("Show/Hide").getBoolean("showGPUTitle")) {
-                panel.add(GPULabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showGpuName")) {
-                panel.add(gpuNameLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showGpuUsage")) {
-                panel.add(gpuUsageLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showGpuTemp")) {
-                panel.add(gpuTemperatureLabel);
-            }
-        }
-        if (showRam) {
-            if (settings.getJSONObject("Show/Hide").getBoolean("showRAMTitle")) {
-                panel.add(RAMLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showRamTotal")) {
-                panel.add(ramTotalLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showRamInUse")) {
-                panel.add(ramInUseLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showRamFree")) {
-                panel.add(ramFreeLabel);
-            }
-        }
-        if (showSsd) {
-            if (settings.getJSONObject("Show/Hide").getBoolean("showSSDTitle")) {
-                panel.add(SSDLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showSsdTotal")) {
-                panel.add(ssdTotalLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showSsdFree")) {
-                panel.add(ssdFreeLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showSsdUsed")) {
-                panel.add(ssdUsedLabel);
-            }
-        }
-        downloadMonitor = new NetworkMonitor(networkIF, true);
-        uploadMonitor = new NetworkMonitor(networkIF, false);
-        if (showNetwork) {
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNETWORKTitle")) {
-                panel.add(NETWORKLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkIP")) {
-                panel.add(networkIPLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkDownloadSpeed")) {
-                panel.add(networkDownloadSpeedLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkDownloadTotal")) {
-                panel.add(networkDownloadTotalLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkDownloadMonitor")) {
-                panel.add(downloadMonitor);
-
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadSpeed")) {
-                panel.add(networkUploadSpeedLabel);
-            }
-
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadTotal")) {
-                panel.add(networkUploadTotalLabel);
-            }
-            if (settings.getJSONObject("Show/Hide").getBoolean("showNetworkUploadMonitor")) {
-                panel.add(uploadMonitor);
-
-            }
-        }
-        add(panel);
     }
 
     private void setBackgroundColorUpdate() {
@@ -337,25 +166,37 @@ public class SystemMonitorUI extends JFrame {
         return hwnd;
     }
 
-    static void initializeSystemInfo() {
-        SystemInfo systemInfo = new SystemInfo();
-        CentralProcessor processor = systemInfo.getHardware().getProcessor();
-        //  cpuNumber = processor.getPhysicalProcessorCount() * processor.getPhysicalPackageCount();
-        cpuNumber = processor.getLogicalProcessorCount();
-        hal = systemInfo.getHardware();
-        os = systemInfo.getOperatingSystem();
-        List<NetworkIF> networkIFs = hal.getNetworkIFs();
-        if (!networkIFs.isEmpty()) {
-            for (NetworkIF networkIF : networkIFs) {
-                if (networkIF.isConnectorPresent() && networkIF.getIPv4addr().length > 0 && networkIF.getSpeed() > 0 && networkIF.getIfOperStatus().equals(NetworkIF.IfOperStatus.UP)) {
-                    SystemMonitorUI.networkIF = networkIF;
-                    break;
-                }
-            }
+    public static void updateWeatherInfo() {
+        try {
+            CompletableFuture<Boolean> future = WeatherByIP.getWeatherInfo()
+                    .thenApply(weatherInfo -> {
+                        if (weatherInfo == null) {
+                            SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
+                            return false;
+                        }
+                        try {
+                            String weatherIcon = weatherInfo.getIconCode();
+                            ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
+                            SwingUtilities.invokeLater(() -> {
+                                weatherLabel.setIcon(icon);
+                                weatherLabel.setText("   " + weatherInfo.getTemperature() + "°C" + "    " + weatherInfo.getCity());
+                            });
+                            return true;
+                        } catch (Exception e) {
+                            SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
+                            return false;
+                        }
+                    })
+                    .exceptionally(ex -> {
+                        SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
+                       System.out.println("Weather update failure");
+                        return false;
+                    });
+            boolean result = future.join();
+            System.out.println("Weather update " + (result ? "success" : "failure"));
+        } catch (Exception e) {
+            System.out.println("Weather update failure");
         }
-
-        // reset panel NetworkMonitor
-
     }
 
     private void startUpdateTimer() {
@@ -583,37 +424,210 @@ public class SystemMonitorUI extends JFrame {
         }
     }
 
-    static void updateWeatherInfo() {
-        try {
-            CompletableFuture<Boolean> future = WeatherByIP.getWeatherInfo()
-                    .thenApply(weatherInfo -> {
-                        if (weatherInfo == null) {
-                            SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
-                            return false;
-                        }
-                        try {
-                            String weatherIcon = weatherInfo.getIconCode();
-                            ImageIcon icon = new ImageIcon(new URL("http://openweathermap.org/img/w/" + weatherIcon + ".png"));
-                            SwingUtilities.invokeLater(() -> {
-                                weatherLabel.setIcon(icon);
-                                weatherLabel.setText("   " + weatherInfo.getTemperature() + "°C" + "    " + weatherInfo.getCity());
-                            });
-                            return true;
-                        } catch (Exception e) {
-                            SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
-                            return false;
-                        }
-                    })
-                    .exceptionally(ex -> {
-                        SwingUtilities.invokeLater(() -> weatherLabel.setText("Weather: --"));
-                       System.out.println("Weather update failure");
-                        return false;
-                    });
-            boolean result = future.join();
-            System.out.println("Weather update " + (result ? "success" : "failure"));
-        } catch (Exception e) {
-            System.out.println("Weather update failure");
+    public void initializeUI() {
+        setMaximumSize(new Dimension(1000, getMaximumSize().height));
+        int w = settings.getJSONObject("Screen").getInt("width");
+        int h = settings.getJSONObject("Screen").getInt("height");
+        setSize(new Dimension(w, h));
+        int xc = settings.getJSONObject("Screen").getInt("xc");
+        int yc = settings.getJSONObject("Screen").getInt("yc");
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int x = screenSize.width - getWidth() + xc;
+        setLocation(x, yc);
+
+        setResizable(false);
+        setUndecorated(true);
+        setAlwaysOnTop(false);
+        if (settings.getJSONObject("Screen").getBoolean("alwaysOnTop")) {
+            setAlwaysOnTop(true);
         }
+
+        setFocusableWindowState(false);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setBackground(new Color(0, 0, 0, 0));
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+        panel.setOpaque(false);
+        panel.setBackground(new Color(0, 0, 0, 0));
+        setBackgroundColorUpdate();
+        setOpacityUpdate();
+
+        timeLabel = createLabel("HH:mm");
+        timeLabel.setBorder(new EmptyBorder(0, 12,0 , 0));
+        timeLabel.setName("timeLabel");
+        dateLabel = createLabel(" EEE, dd MMM yyyy");
+        dateLabel.setName("dateLabel");
+        weatherLabel = createLabel("Weather: --");
+        BufferedImage blankImage = new BufferedImage(50, 50, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = blankImage.createGraphics();
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
+        g2d.fillRect(0, 0, 50, 50);
+        g2d.dispose();
+        ImageIcon transparentIcon = new ImageIcon(blankImage);
+        weatherLabel.setIcon(transparentIcon);
+        kernelLabel = createLabel(" Computer:-- ");
+        uptimeLabel = createLabel(" Uptime: 0h 0m 0s");
+        cpuUsageLabel = createLabel(" CPU Usage: 0%");
+        cpuTemperatureLabel = createLabel(" CPU Temperature: 0°C");
+        cpuNameLabel = createLabel(" CPU: --");
+        processLabel = createLabel(" Process: --");
+        processListLabel[0] = createLabel("  --");
+        processListLabel[1] = createLabel("  --");
+        processListLabel[2] = createLabel("  --");
+        processListLabel[3] = createLabel("  --");
+
+
+        gpuNameLabel = createLabel(" GPU: --");
+        gpuTemperatureLabel = createLabel(" GPU Temperature: 0°C");
+        gpuUsageLabel = createLabel(" GPU Usage: 0%");
+
+        ramTotalLabel = createLabel(" RAM Total: 0 GiB");
+        ramInUseLabel = createLabel(" In Use: 0 GiB");
+        ramFreeLabel = createLabel(" Free: 0 GiB");
+
+
+        ssdTotalLabel = createLabel(" SSD Total: 0 GiB");
+        ssdFreeLabel = createLabel(" Free: 0 GiB");
+        ssdUsedLabel = createLabel(" Used: 0 GiB");
+
+        networkIPLabel = createLabel(" IP: --");
+        networkDownloadSpeedLabel = createLabel(" Download Speed: 0 kB/s");
+        networkUploadSpeedLabel = createLabel(" Upload Speed: 0 kB/s");
+        networkDownloadTotalLabel = createLabel(" Download Total: 0 MiB");
+        networkUploadTotalLabel = createLabel(" Upload Total: 0 KiB");
+        SYSTEMLabel = createSeparator("SYSTEM");
+        CPULabel = createSeparator("CPU");
+        GPULabel = createSeparator("GPU");
+        RAMLabel = createSeparator("RAM");
+        SSDLabel = createSeparator("STORAGE");
+        NETWORKLabel = createSeparator("NETWORK");
+        PROCESSESLabel = createSeparator("PROCESSES");
+
+
+        if (settings.getJSONObject("Show/Hide").getJSONObject("DATETIME").getBoolean("showTime")) {
+            panel.add(timeLabel);
+        }
+        if (settings.getJSONObject("Show/Hide").getJSONObject("DATETIME").getBoolean("showDate")) {
+            panel.add(dateLabel);
+        }
+
+        if (showWeather) {
+            if (settings.getJSONObject("Show/Hide").getJSONObject("WEATHER").getBoolean("showWeather")) {
+                panel.add(weatherLabel);
+            }
+        }
+        if (settings.getJSONObject("Show/Hide").getJSONObject("SYSTEM").getBoolean("showSYSTEMTitle")) {
+            panel.add(SYSTEMLabel);
+        }
+        if (settings.getJSONObject("Show/Hide").getJSONObject("KERNEL").getBoolean("showKernel")) {
+            panel.add(kernelLabel);
+        }
+        if (settings.getJSONObject("Show/Hide").getJSONObject("SYSTEM").getBoolean("showUptime")) {
+            panel.add(uptimeLabel);
+        }
+        if (showCpu) {
+            if (settings.getJSONObject("Show/Hide").getJSONObject("CPU").getBoolean("showCPUTitle")) {
+                panel.add(CPULabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("CPU").getBoolean("showCpuName")) {
+                panel.add(cpuNameLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("CPU").getBoolean("showCpuUsage")) {
+                panel.add(cpuUsageLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("CPU").getBoolean("showCpuTemp")) {
+                panel.add(cpuTemperatureLabel);
+            }
+        }
+        if (showProcess) {
+            if (settings.getJSONObject("Show/Hide").getJSONObject("PROCESS").getBoolean("showProcessTitle")) {
+                panel.add(PROCESSESLabel);
+
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("PROCESS").getBoolean("showProcess")) {
+                panel.add(processLabel);
+            }
+            panel.add(processListLabel[0]);
+            panel.add(processListLabel[1]);
+            panel.add(processListLabel[2]);
+            panel.add(processListLabel[3]);
+        }
+
+
+        if (showGpu) {
+            if (settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showGPUTitle")) {
+                panel.add(GPULabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showGpuName")) {
+                panel.add(gpuNameLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showGpuUsage")) {
+                panel.add(gpuUsageLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showGpuTemp")) {
+                panel.add(gpuTemperatureLabel);
+            }
+        }
+        if (showRam) {
+            if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRAMTitle")) {
+                panel.add(RAMLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRamTotal")) {
+                panel.add(ramTotalLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRamInUse")) {
+                panel.add(ramInUseLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRamFree")) {
+                panel.add(ramFreeLabel);
+            }
+        }
+        if (showSsd) {
+            if (settings.getJSONObject("Show/Hide").getJSONObject("STORAGE").getBoolean("showSSDTitle")) {
+                panel.add(SSDLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("STORAGE").getBoolean("showSsdTotal")) {
+                panel.add(ssdTotalLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("STORAGE").getBoolean("showSsdFree")) {
+                panel.add(ssdFreeLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("STORAGE").getBoolean("showSsdUsed")) {
+                panel.add(ssdUsedLabel);
+            }
+        }
+        downloadMonitor = new NetworkMonitor(networkIF, true);
+        uploadMonitor = new NetworkMonitor(networkIF, false);
+        if (showNetwork) {
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNETWORKTitle")) {
+                panel.add(NETWORKLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNetworkIP")) {
+                panel.add(networkIPLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNetworkDownloadSpeed")) {
+                panel.add(networkDownloadSpeedLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNetworkDownloadTotal")) {
+                panel.add(networkDownloadTotalLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNetworkDownloadMonitor")) {
+                panel.add(downloadMonitor);
+
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNetworkUploadSpeed")) {
+                panel.add(networkUploadSpeedLabel);
+            }
+
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNetworkUploadTotal")) {
+                panel.add(networkUploadTotalLabel);
+            }
+            if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNetworkUploadMonitor")) {
+                panel.add(uploadMonitor);
+
+            }
+        }
+        add(panel);
     }
 
     private String formatUptime(long seconds) {
@@ -648,7 +662,6 @@ public class SystemMonitorUI extends JFrame {
                 User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
             }
         });
-        // new SystemTrayApp(); chay thread rieng
         new Thread(SystemTrayApp::new).start();
     }
 

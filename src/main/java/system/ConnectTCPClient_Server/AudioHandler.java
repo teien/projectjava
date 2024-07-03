@@ -1,4 +1,4 @@
-package ConnectTCPClient_Server;
+package system.ConnectTCPClient_Server;
 
 import javax.sound.sampled.*;
 import java.io.DataInputStream;

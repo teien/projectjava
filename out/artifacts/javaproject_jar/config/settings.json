@@ -41,7 +41,7 @@
         "showProcessTitle": true
     },
     "Screen": {
-        "alwaysOnTop": false,
+        "alwaysOnTop": true,
         "width": 230,
         "yc": 0,
         "xc": 240,
@@ -55,7 +55,7 @@
         "fontColor2": -3394816,
         "fontColor1": -16724788,
         "fontSize2": 14,
-        "opacity": 0.84
+        "opacity": 1
     },
     "Paths": {"sensorDataFilePath": "C:\\ProgramData\\sensorData.json"},
     "Chart": {"chartWidth": 214}

@@ -1,3 +1,5 @@
+package settings;
+
 import org.json.JSONObject;
 
 import javax.swing.*;
@@ -170,7 +172,7 @@ public class SettingsPanel extends JPanel {
     public static Double getOpacity() {
         return selectedOpacity;
     }
-    static Boolean checkSettings = false;
+    public static Boolean checkSettings = false;
     public static void applySettings() {
         try {
             int fontSize1 = getSelectedFontSize1();

@@ -1,4 +1,4 @@
-package ConnectTCPClient_Server;
+package system.ConnectTCPClient_Server;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -86,43 +86,34 @@ public class RemoteDesktopClient extends JFrame {
 
         remoteButton = new JButton("Remote");
         remoteButton.setEnabled(true);
-        remoteButton.addActionListener(e -> {
-            /*try {
-                connectToRemoteServer(Ip4Address.getText());
-                startRemote();
-            } catch (IOException | InterruptedException ex) {
-               System.out.println("Không thể kết nối tới server Remote tại " + Ip4Address.getText() + ": " + ex.getMessage());
-            }
-*/
-            new SwingWorker<>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    try {
-                        if (!checkRemoteConnection()) {
-                            remoteButton.setText("Connecting...");
-                            connectToRemoteServer(Ip4Address.getText());
-                        }
+        remoteButton.addActionListener(e -> new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    if (!checkRemoteConnection()) {
+                        remoteButton.setText("Connecting...");
+                        connectToRemoteServer(Ip4Address.getText());
+                    }
 
-                    } catch (IOException ex) {
-                        System.out.println("Không thể kết nối tới server Remote tại " + Ip4Address.getText() + ": " + ex.getMessage());
-                    }
-                    return null;
+                } catch (IOException ex) {
+                    System.out.println("Không thể kết nối tới server Remote tại " + Ip4Address.getText() + ": " + ex.getMessage());
                 }
-                @Override
-                protected void done() {
-                    try {
-                        if (checkRemoteConnection()) {
-                            remoteButton.setText("Remoted");
-                            startRemote();}
-                        else {
-                            remoteButton.setText("Remote");
-                        }
-                    } catch (IOException | InterruptedException ex) {
-                        System.out.println("Không thể kết nối tới server Remote tại " + Ip4Address.getText() + ": " + ex.getMessage());
+                return null;
+            }
+            @Override
+            protected void done() {
+                try {
+                    if (checkRemoteConnection()) {
+                        remoteButton.setText("Remoted");
+                        startRemote();}
+                    else {
+                        remoteButton.setText("Remote");
                     }
+                } catch (IOException | InterruptedException ex) {
+                    System.out.println("Không thể kết nối tới server Remote tại " + Ip4Address.getText() + ": " + ex.getMessage());
                 }
-            }.execute();
-        });
+            }
+        }.execute());
         disconnectButton.setEnabled(false);
         disconnectButton.addActionListener(e -> {
             closeConnections();
@@ -145,93 +136,70 @@ public class RemoteDesktopClient extends JFrame {
                 sendChatButton.setEnabled(!chatInput.getText().isEmpty());
             }
         });
-        sendChatButton.addActionListener(e -> {
-
-            /*try {
-                sendChatMessage();
-            } catch (IOException ex) {
-                System.out.println("Không thể Không thể kết nối tới server Chat tại "  + Ip4Address.getText() + ex.getMessage());
-            }*/
-            new SwingWorker<>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    try {
-                        if (!checkChatConnection()) {
-                            sendChatButton.setText("Sending...");
-                            connectToChatServer(Ip4Address.getText());
-                        }
-                    } catch (IOException ex) {
-                        System.out.println("Không thể Không thể kết nối tới server Chat tại "  + Ip4Address.getText() + ex.getMessage());
+        sendChatButton.addActionListener(e -> new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    if (!checkChatConnection()) {
+                        sendChatButton.setText("Sending...");
+                        connectToChatServer(Ip4Address.getText());
                     }
-                    return null;
+                } catch (IOException ex) {
+                    System.out.println("Không thể Không thể kết nối tới server Chat tại "  + Ip4Address.getText() + ex.getMessage());
                 }
-                @Override
-                protected void done() {
-                    try {
-                        if (checkChatConnection()) {
-                            sendChatMessage();
-                        }
-                        sendChatButton.setText("Send Chat");
-                    } catch (IOException ex) {
-                        System.out.println("Không thể Không thể kết nối tới server Chat tại "  + Ip4Address.getText() + ex.getMessage());
+                return null;
+            }
+            @Override
+            protected void done() {
+                try {
+                    if (checkChatConnection()) {
+                        sendChatMessage();
                     }
+                    sendChatButton.setText("Send Chat");
+                } catch (IOException ex) {
+                    System.out.println("Không thể Không thể kết nối tới server Chat tại "  + Ip4Address.getText() + ex.getMessage());
                 }
-            }.execute();
-
-        });
+            }
+        }.execute());
         inputPanel.add(chatInput, BorderLayout.CENTER);
         inputPanel.add(sendChatButton, BorderLayout.EAST);
 
         JPanel buttonPanel = new JPanel(new FlowLayout());
         sendFileButton = getjButton();
 
-        callButton.addActionListener(e -> {
-            /* if (callButton.getText().equals("Call")) {
-                 if (checkAudioConnection()) {
-                     connectToAudioServer(Ip4Address.getText());
-                 }
-                 AudioHandler.startSending();
-                 callButton.setText("End Call");
-             } else {
-                 AudioHandler.stopSending();
-
-                 callButton.setText("Call");
-             }*/
-            new SwingWorker<>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    try {
-                        if (callButton.getText().equals("Call")) {
-                            if (checkAudioConnection()) { //checkAudioConnection return false
-                                callButton.setText("Calling...");
-                                connectToAudioServer(Ip4Address.getText());
-                            }
-                            AudioHandler.startSending();
-                            callButton.setText("End Call");
-                        } else {
-                            AudioHandler.stopSending();
-
-                            callButton.setText("Call");
+        callButton.addActionListener(e -> new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                try {
+                    if (callButton.getText().equals("Call")) {
+                        if (checkAudioConnection()) { //checkAudioConnection return false
+                            callButton.setText("Calling...");
+                            connectToAudioServer(Ip4Address.getText());
                         }
-                    } catch (Exception e) {
-                        System.out.println("Không thể kết nối tới server Audio tại " + Ip4Address.getText() + ": " + e.getMessage());
-                    }
-                    return null;
-                }
-                @Override
-                protected void done() {
-                    try {
-                        if (checkAudioConnection()) {
-                            callButton.setText("Call");
-                        }
+                        AudioHandler.startSending();
+                        callButton.setText("End Call");
+                    } else {
+                        AudioHandler.stopSending();
 
-                    } catch (Exception e) {
-                        System.out.println("Không thể kết nối tới server Audio tại " + Ip4Address.getText() + ": " + e.getMessage());
+                        callButton.setText("Call");
                     }
+                } catch (Exception e) {
+                    System.out.println("Không thể kết nối tới server Audio tại " + Ip4Address.getText() + ": " + e.getMessage());
                 }
-            }.execute();
+                return null;
+            }
+            @Override
+            protected void done() {
+                try {
+                    if (checkAudioConnection()) {
+                        callButton.setText("Call");
+                    }
 
-        });
+                } catch (Exception e) {
+                    System.out.println("Không thể kết nối tới server Audio tại " + Ip4Address.getText() + ": " + e.getMessage());
+                }
+            }
+        }.execute());
         connectButton.addActionListener(e -> {
             connectButton.setText("Connecting...");
             new SwingWorker<>() {
@@ -277,11 +245,9 @@ public class RemoteDesktopClient extends JFrame {
 
     private void disConnections(Socket socket, DataInputStream dis, DataOutputStream dos) {
         try (
-
              DataOutputStream ignored = dos;
              DataInputStream ignored1 = dis;
              Socket ignored2 = socket) {
-
         } catch (IOException e) {
             System.err.println("Lỗi khi đóng kết nối: " + e.getMessage());
         }
@@ -289,34 +255,23 @@ public class RemoteDesktopClient extends JFrame {
     private @NotNull JButton getjButton() {
         JButton sendFileButton = new JButton("Send File");
         sendFileButton.addActionListener(e ->
-        {
-            /*try {
-                if (!checkFileConnection()){
-                connectToFileServer(Ip4Address.getText());}
-                if (checkFileConnection()) {
-                sendFile();}
-            } catch (Exception ex) {
-                    System.out.println("Không thể kết nối tới server truyền file tại " + Ip4Address.getText() + ": " + ex.getMessage());
-            }
-        });*/
-            new SwingWorker<>() {
-                @Override
-                protected Void doInBackground() throws Exception {
-                    try {
-                        if (!checkFileConnection()) {
-                            connectToFileServer(Ip4Address.getText());
+                new SwingWorker<>() {
+                    @Override
+                    protected Void doInBackground() throws Exception {
+                        try {
+                            if (!checkFileConnection()) {
+                                connectToFileServer(Ip4Address.getText());
+                            }
+                            if (checkFileConnection()) {
+                                sendFile();
+                            }
+                        } catch (Exception ex) {
+                            System.out.println("Không thể kết nối tới server truyền file tại " + Ip4Address.getText() + ": " + ex.getMessage());
                         }
-                        if (checkFileConnection()) {
-                            sendFile();
-                        }
-                    } catch (Exception ex) {
-                        System.out.println("Không thể kết nối tới server truyền file tại " + Ip4Address.getText() + ": " + ex.getMessage());
+                        return null;
                     }
-                    return null;
-                }
 
-            }.execute();
-        });
+                }.execute());
         return sendFileButton;
     }
     private void setButtonSize(JButton... buttons) {
@@ -402,15 +357,13 @@ public class RemoteDesktopClient extends JFrame {
     }
     private void startRemote() throws IOException, InterruptedException {
 
-        remoteData(); // Thiết lập dữ liệu ban đầu cho kết nối remote
-        // Khởi tạo giao diện
+        remoteData();
         frame = new JFrame("Remote Desktop Viewer");
         label = new JLabel();
         frame.setSize(800, 600);
         frame.add(label);
         frame.setVisible(true);
 
-        // Thêm bộ lắng nghe sự kiện chuột và bàn phím
         addMouseListeners(label, dos);
         addKeyListeners(frame, dos);
 

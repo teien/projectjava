@@ -1,5 +1,5 @@
 
-package ConnectTCPClient_Server;
+package system.ConnectTCPClient_Server;
 
 import java.awt.*;
 import java.awt.event.InputEvent;
@@ -79,9 +79,7 @@ public class RemoteDesktopServer {
 
         stopButton.setEnabled(false);
         startButton.setEnabled(true);
-        startButton.addActionListener(e -> {
-            startServer();
-        });
+        startButton.addActionListener(e -> startServer());
 
         stopButton.addActionListener(e -> stopServer());
 
@@ -90,18 +88,10 @@ public class RemoteDesktopServer {
         fileCheckBox.setSelected(true);
         audioCheckBox.setSelected(true);
 
-        remoteCheckBox.addActionListener(e -> {
-            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
-        });
-        chatCheckBox.addActionListener(e -> {
-            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
-        });
-        fileCheckBox.addActionListener(e -> {
-            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
-        });
-        audioCheckBox.addActionListener(e -> {
-            startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected());
-        });
+        remoteCheckBox.addActionListener(e -> startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected()));
+        chatCheckBox.addActionListener(e -> startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected()));
+        fileCheckBox.addActionListener(e -> startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected()));
+        audioCheckBox.addActionListener(e -> startButton.setEnabled(remoteCheckBox.isSelected() || chatCheckBox.isSelected() || fileCheckBox.isSelected()));
 
 
         checkBoxPanel.add(remoteCheckBox);
@@ -147,15 +137,13 @@ public class RemoteDesktopServer {
         callButton.setEnabled(false);
         sendFile.setEnabled(false);
 
-        sendFile.addActionListener(e -> {
-            new Thread(() -> {
-                try {
-                    sendFileToAllClients();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            }).start();
-        });
+        sendFile.addActionListener(e -> new Thread(() -> {
+            try {
+                sendFileToAllClients();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }).start());
 
 
         callButton.addActionListener(e -> {

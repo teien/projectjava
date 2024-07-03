@@ -1,6 +1,9 @@
+package system;
 
-import ConnectTCPClient_Server.RemoteDesktopClient;
-import ConnectTCPClient_Server.RemoteDesktopServer;
+import system.ConnectTCPClient_Server.RemoteDesktopClient;
+import system.ConnectTCPClient_Server.RemoteDesktopServer;
+import settings.SettingsPanel;
+import Main.SystemMonitorUI;
 
 import javax.swing.*;
 import javax.swing.event.PopupMenuEvent;
@@ -142,7 +145,10 @@ public class SystemTrayApp {
             SettingsDialog settingsDialog = new SettingsDialog(frame);
             settingsDialog.setVisible(true);
         });
-        updateWeather.addActionListener(e -> SystemMonitorUI.updateWeatherInfo());
+
+        updateWeather.addActionListener(e -> {
+            SystemMonitorUI.updateWeatherInfo();
+        });
         updateNetwork.addActionListener(e -> SystemMonitorUI.initializeSystemInfo());
         remoteServer.addActionListener(e -> new Thread(() -> {
             try {

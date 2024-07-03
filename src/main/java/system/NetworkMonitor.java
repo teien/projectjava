@@ -1,4 +1,5 @@
-import org.jetbrains.annotations.NotNull;
+package system;
+
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
@@ -11,6 +12,8 @@ import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.json.JSONObject;
 import oshi.hardware.NetworkIF;
+import settings.SettingsLogger;
+
 import javax.swing.*;
 import java.awt.*;
 
