@@ -596,8 +596,10 @@ public class SystemMonitorUI extends JFrame {
                 panel.add(ssdUsedLabel);
             }
         }
+
         downloadMonitor = new NetworkMonitor(networkIF, true);
         uploadMonitor = new NetworkMonitor(networkIF, false);
+
         if (showNetwork) {
             if (settings.getJSONObject("Show/Hide").getJSONObject("NETWORK").getBoolean("showNETWORKTitle")) {
                 panel.add(NETWORKLabel);
@@ -637,7 +639,6 @@ public class SystemMonitorUI extends JFrame {
         return String.format("%dh %dm %ds", hours, minutes, secs);
     }
 
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             JFrame dummyFrame = new JFrame();
@@ -654,7 +655,6 @@ public class SystemMonitorUI extends JFrame {
                         settingsUI.isProcessSelected()
                 );
                 ui.setVisible(true);
-
 
                 WinDef.HWND hwnd = getHWnd(ui);
                 int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);

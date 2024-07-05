@@ -146,10 +146,20 @@ public class SystemTrayApp {
             settingsDialog.setVisible(true);
         });
 
-        updateWeather.addActionListener(e -> {
-            SystemMonitorUI.updateWeatherInfo();
-        });
-        updateNetwork.addActionListener(e -> SystemMonitorUI.initializeSystemInfo());
+        updateWeather.addActionListener(e -> new Thread(() -> {
+            try {
+                SystemMonitorUI.updateWeatherInfo();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());
+        updateNetwork.addActionListener(e -> new Thread( () -> {
+            try {
+                SystemMonitorUI.initializeSystemInfo();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());
         remoteServer.addActionListener(e -> new Thread(() -> {
             try {
                  new RemoteDesktopServer().createAndShowGUI();

@@ -123,6 +123,12 @@ public class SettingsLogger {
         JSONObject style = new JSONObject();
         style.put("fontType1", fontType1);
         style.put("fontSize1", fontSize1);
+        if (fontColor1 == null) {
+            fontColor1 = new Color(settings.getJSONObject("Style").optInt("fontColor1"));
+        }
+        if (fontColor2 == null) {
+            fontColor2 = new Color(settings.getJSONObject("Style").optInt("fontColor2"));
+        }
         style.put("fontColor1", fontColor1.getRGB());
         style.put("fontType2", fontType2);
         style.put("fontSize2", fontSize2);

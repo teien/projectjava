@@ -48,14 +48,14 @@
         "height": 940
     },
     "Style": {
-        "bgColor": 1309486352,
-        "fontType1": "JetBrains Mono Light",
-        "fontType2": "JetBrains Mono SemiBold",
+        "bgColor": 855638016,
+        "fontType1": "JetBrains Mono NL Thin",
+        "fontType2": "JetBrains Mono ExtraBold",
         "fontSize1": 12,
-        "fontColor2": -3394816,
-        "fontColor1": -16724788,
+        "fontColor2": -16724788,
+        "fontColor1": -1,
         "fontSize2": 14,
-        "opacity": 1
+        "opacity": 0.86
     },
     "Paths": {"sensorDataFilePath": "C:\\ProgramData\\sensorData.json"},
     "Chart": {"chartWidth": 214}
