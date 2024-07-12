@@ -13,40 +13,50 @@ import java.io.InputStreamReader;
 
 public class ServiceManager {
     static org.json.JSONObject settings = SettingsLogger.loadSettings();
-    private  static final String SENSOR_DATA_FILE_PATH = settings.getJSONObject("Paths").getString("sensorDataFilePath");
+    private static final String SENSOR_DATA_FILE_PATH = settings.getJSONObject("Paths").getString("sensorDataFilePath");
     private static final String SERVICE_NAME = "HardwareMonitorService";
     private static final String CPU_PACKAGE = "CPU Package";
     private static final String GPU_CORE = "GPU Core";
     private static final String TEMPERATURE = "Temperature";
     private static final String USAGE = "Usage";
 
+    private static JSONArray lastSensorDataArray = null;
 
     public record HwInfo(Double cpuTemperature, Double gpuTemperature, Double gpuUsage, Double cpuUsage, String cpuName,
                          String gpuName) {
 
         public static HwInfo getHwInfo() {
-            Double cpuTemp = 0.0;
-            Double gpuTemp = 0.0;
-            Double gpuUsage = 0.0;
-            Double cpuUsage = 0.0;
-            String cpuName = "";
-            String gpuName = "";
             startAndEnsureServiceRunning();
             JSONArray sensorDataArray = readSensorData();
-            if (sensorDataArray != null) {
-                for (Object sensorDataObj : sensorDataArray) {
-                    JSONObject sensorData = (JSONObject) sensorDataObj;
 
-                    String hardwareType = (String) sensorData.get("HardwareType");
-                    String hardwareName = (String) sensorData.get("HardwareName");
-                    String sensorName = (String) sensorData.get("SensorName");
-                    String dataType = (String) sensorData.get("DataType");
-                    Object valueObj = sensorData.get("Value");
+            if (sensorDataArray == null) {
+                sensorDataArray = lastSensorDataArray;
+            } else {
+                lastSensorDataArray = sensorDataArray;
+            }
 
-                    Double value = null;
-                    if (valueObj instanceof Number) {
-                        value = ((Number) valueObj).doubleValue();
-                    }
+            if (sensorDataArray == null) {
+                return new HwInfo(0.0, 0.0, 0.0, 0.0, "", "");
+            }
+
+            double cpuTemp = 0.0;
+            double gpuTemp = 0.0;
+            double gpuUsage = 0.0;
+            double cpuUsage = 0.0;
+            String cpuName = "";
+            String gpuName = "";
+
+            for (Object sensorDataObj : sensorDataArray) {
+                JSONObject sensorData = (JSONObject) sensorDataObj;
+
+                String hardwareType = (String) sensorData.get("HardwareType");
+                String hardwareName = (String) sensorData.get("HardwareName");
+                String sensorName = (String) sensorData.get("SensorName");
+                String dataType = (String) sensorData.get("DataType");
+                Object valueObj = sensorData.get("Value");
+
+                if (valueObj instanceof Number) {
+                    double value = ((Number) valueObj).doubleValue();
 
                     if (TEMPERATURE.equals(dataType)) {
                         if (CPU_PACKAGE.equals(sensorName)) {
@@ -69,10 +79,6 @@ public class ServiceManager {
             return new HwInfo(cpuTemp, gpuTemp, gpuUsage, cpuUsage, cpuName, gpuName);
         }
     }
-
-
-
-
 
     private static void startAndEnsureServiceRunning() {
         if (!isServiceRunning()) {
@@ -100,12 +106,10 @@ public class ServiceManager {
     private static JSONArray readSensorData() {
         JSONParser parser = new JSONParser();
         try (FileReader reader = new FileReader(ServiceManager.SENSOR_DATA_FILE_PATH)) {
-
             return (JSONArray) parser.parse(reader);
         } catch (IOException | ParseException e) {
             System.out.println("Error reading sensor data: " + e.getMessage());
         }
-
         return null;
     }
 

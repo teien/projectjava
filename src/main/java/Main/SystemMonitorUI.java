@@ -22,6 +22,10 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.*;
@@ -128,6 +132,7 @@ public class SystemMonitorUI extends JFrame {
             checkUpdateNet.shutdown();
             processExecutor.shutdown();
         }));
+
     }
 
     public static void initializeSystemInfo() {
@@ -150,6 +155,42 @@ public class SystemMonitorUI extends JFrame {
         // reset panel system.NetworkMonitor
 
     }
+
+    public static void restart() {
+        try {
+            // Lấy đường dẫn tới java bin
+            String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+            System.out.println("Java bin path: " + javaBin);
+
+            // Lấy đường dẫn tới JAR hiện tại
+            File currentJar = new File(SystemMonitorUI.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            System.out.println("Current JAR path: " + currentJar.getPath());
+
+            // Kiểm tra xem có phải là file JAR không
+            if (!currentJar.getName().endsWith(".jar")) {
+                System.out.println("The current file is not a JAR file.");
+                return;
+            }
+
+            // Tạo lệnh khởi động lại ứng dụng
+            List<String> command = new ArrayList<>();
+            command.add(javaBin);
+            command.add("-jar");
+            command.add(currentJar.getPath());
+            System.out.println("Command: " + String.join(" ", command));
+
+            // Khởi chạy quá trình mới
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.start();
+            System.out.println("Restarting application...");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Thoát ứng dụng hiện tại sau khi đã khởi chạy quá trình mới
+        System.exit(0);
+    }
+
 
     private void setBackgroundColorUpdate() {
 
@@ -321,108 +362,186 @@ public class SystemMonitorUI extends JFrame {
         return separator;
     }
 
-    private void updateSystemInfo() {
-        try {
-            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-            SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy");
-            Date now = new Date();
-            timeLabel.setText(timeFormat.format(now));
-            timeLabel.setBorder(new EmptyBorder(0, 12,0 , 0));
-            dateLabel.setText(dateFormat.format(now));
+   private void updateSystemInfo() {
+       try {
+           SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+           SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy");
+           Date now = new Date();
+           String timeStr = timeFormat.format(now);
+           String dateStr = dateFormat.format(now);
 
-            String computerName = System.getenv("COMPUTERNAME");
-            String osName = System.getProperty("os.name").toLowerCase();
-            kernelLabel.setText(" Computer: " + computerName + " (" + osName + ")");
-            uptimeLabel.setText(" Uptime: " + formatUptime(os.getSystemUptime()));
+           SwingUtilities.invokeLater(() -> {
+               timeLabel.setText(timeStr);
+               dateLabel.setText(dateStr);
+           });
 
-            ServiceManager.HwInfo hwInfo = ServiceManager.HwInfo.getHwInfo();
-            if (showCpu) {
-                Double cpuLoad = hwInfo.cpuUsage();
-                cpuUsageLabel.setText(String.format(" CPU Usage: %15.1f%%", cpuLoad));
-                Double cpuTemperature = hwInfo.cpuTemperature();
-                cpuTemperatureLabel.setText(String.format(" CPU Temperature: %9.1f°C", cpuTemperature));
-                cpuNameLabel.setText(" " + hwInfo.cpuName());
+           String computerName = System.getenv("COMPUTERNAME");
+           String osName = System.getProperty("os.name").toLowerCase();
+           String kernelInfo = " Computer: " + computerName + " (" + osName + ")";
+           String uptimeInfo = " Uptime: " + formatUptime(os.getSystemUptime());
 
-            }
-            if (showGpu) {
-                Double gpuTemperature = hwInfo.gpuTemperature();
-                Double gpuUsage = hwInfo.gpuUsage();
-                gpuTemperatureLabel.setText(" GPU Temperature: " + String.format("%9.1f°C", gpuTemperature));
-                gpuUsageLabel.setText(String.format(" GPU Usage: %15.1f%%", gpuUsage));
-                gpuNameLabel.setText(" " + hwInfo.gpuName());
-            }
+           ServiceManager.HwInfo hwInfo = ServiceManager.HwInfo.getHwInfo();
 
-            GlobalMemory memory = hal.getMemory();
-            if (showRam) {
-                long totalMemory = memory.getTotal();
-                long availableMemory = memory.getAvailable();
-                long usedMemory = totalMemory - availableMemory;
-                ramTotalLabel.setText(String.format(" RAM Total:  %12.2f GiB", totalMemory / 1e9));
-                ramInUseLabel.setText(String.format(" In Use:  %6.1f%%", (double) usedMemory / totalMemory * 100) + String.format("%8.2f GiB", usedMemory / 1e9));
-                ramFreeLabel.setText(String.format(" Free:  %8.1f%%", (double) availableMemory / totalMemory * 100) + String.format("%8.2f GiB", availableMemory / 1e9));
+           String cpuUsageInfo = null;
+           String cpuTemperatureInfo = null;
+           String cpuNameInfo = null;
+           if (showCpu) {
+               Double cpuLoad = hwInfo.cpuUsage();
+               cpuUsageInfo = String.format(" CPU Usage: %15.1f %%", cpuLoad);
+               Double cpuTemperature = hwInfo.cpuTemperature();
+               cpuTemperatureInfo = String.format(" CPU Temperature: %9.1f°C", cpuTemperature);
+               cpuNameInfo = " " + hwInfo.cpuName();
+           }
 
-            }
+           String gpuTemperatureInfo = null;
+           String gpuUsageInfo = null;
+           String gpuNameInfo = null;
+           if (showGpu) {
+               Double gpuTemperature = hwInfo.gpuTemperature();
+               Double gpuUsage = hwInfo.gpuUsage();
+               gpuTemperatureInfo = String.format(" GPU Temperature: %9.1f°C", gpuTemperature);
+               gpuUsageInfo = String.format(" GPU Usage: %15.1f %%", gpuUsage);
+               gpuNameInfo = " " + hwInfo.gpuName();
+           }
 
-            if (showSsd && !hal.getDiskStores().isEmpty()) {
-                String diskName = settings.getString("diskName");
-                File diskPartition = new File(diskName);
-                long totalDisk = diskPartition.getTotalSpace();
-                long usableDisk = diskPartition.getFreeSpace();
-                long usedDisk = totalDisk - usableDisk;
-                ssdTotalLabel.setText(String.format(" Total: %17.2f GiB", totalDisk / 1e9));
-                ssdFreeLabel.setText(String.format(" Free:  %17.2f GiB", usableDisk / 1e9));
-                ssdUsedLabel.setText(String.format(" Used:  %17.2f GiB", usedDisk / 1e9));
-            }
+           GlobalMemory memory = hal.getMemory();
+           String ramTotalInfo = null;
+           String ramInUseInfo = null;
+           String ramFreeInfo = null;
+           if (showRam) {
+               long totalMemory = memory.getTotal();
+               long availableMemory = memory.getAvailable();
+               long usedMemory = totalMemory - availableMemory;
+               ramTotalInfo = String.format(" RAM Total:  %12.2f GiB", totalMemory / 1e9);
+               ramInUseInfo = String.format(" In Use:  %6.1f%%", (double) usedMemory / totalMemory * 100) + String.format("%8.2f GiB", usedMemory / 1e9);
+               ramFreeInfo = String.format(" Free:  %8.1f%%", (double) availableMemory / totalMemory * 100) + String.format("%8.2f GiB", availableMemory / 1e9);
+           }
 
-            if (showNetwork) {
-                if (networkIF != null) {
-                    networkIF.updateAttributes();
-                    long downloadBytes = networkIF.getBytesRecv();
-                    long uploadBytes = networkIF.getBytesSent();
-                    double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024;
-                    double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024;
-                    if (downloadSpeedMbps < 0) downloadSpeedMbps = 0;
-                    if (uploadSpeedMbps < 0) uploadSpeedMbps = 0;
-                    lastDownloadBytes = downloadBytes;
-                    lastUploadBytes = uploadBytes;
-                    String networkIP = " ".repeat(15 - networkIF.getIPv4addr()[0].length()) + networkIF.getIPv4addr()[0];
-                    networkIPLabel.setText(" IP:          " + networkIP);
+           String ssdTotalInfo = null;
+           String ssdFreeInfo = null;
+           String ssdUsedInfo = null;
+           if (showSsd) {
+               String diskName = settings.getString("diskName");
+               Path path = Paths.get(diskName);
+               FileStore fileStore = Files.getFileStore(path);
+               long totalDisk = fileStore.getTotalSpace();
+               long usableDisk = fileStore.getUsableSpace();
+               long usedDisk = totalDisk - usableDisk;
+               ssdTotalInfo = String.format(" Total: %17.2f GiB", totalDisk / 1e9);
+               ssdFreeInfo = String.format(" Free: %18.2f GiB", usableDisk / 1e9);
+               ssdUsedInfo = String.format(" Used: %18.2f GiB", usedDisk / 1e9);
+           }
 
-                    if (downloadSpeedMbps < 1) {
-                        downloadSpeedMbps = downloadSpeedMbps * 1024;
-                        networkDownloadSpeedLabel.setText(String.format(" Download Speed:  %6.2f Kbps", downloadSpeedMbps));
-                    } else {
-                        networkDownloadSpeedLabel.setText(String.format(" Download Speed:  %6.2f Mbps", downloadSpeedMbps));
-                    }
-                    if (uploadSpeedMbps < 1) {
-                        uploadSpeedMbps = uploadSpeedMbps * 1024;
-                        networkUploadSpeedLabel.setText(String.format(" Upload Speed:  %8.2f Kbps", uploadSpeedMbps));
-                    } else {
-                        networkUploadSpeedLabel.setText(String.format(" Upload Speed:  %8.2f Mbps", uploadSpeedMbps));
-                    }
-                    networkDownloadTotalLabel.setText(String.format(" Download Total:  %7.2f GiB", downloadBytes / 1e9));
-                    networkUploadTotalLabel.setText(String.format(" Upload Total:  %9.2f GiB", uploadBytes / 1e9));
-                    downloadMonitor.startDownload();
-                    uploadMonitor.startUpload();
-                    NetworkMonitor.setNetworkIF(networkIF);
-                    if (networkIF.getIfOperStatus() == NetworkIF.IfOperStatus.DOWN) {
-                        downloadMonitor.resetChart();
-                        uploadMonitor.resetChart();
-                    }
-                }
-            }
-            if (showProcess) {
-                processLabel.setText(String.format(" %-9s %7s %10s", "Name", "CPU (%)", "Memory"));
-            }
-            if (SettingsPanel.checkSettings) {
-                updateSetting();
-                SettingsPanel.checkSettings = Boolean.FALSE;
-            }
-            repaint();
-        } catch (Exception e) {
+           String networkIPInfo = null;
+           String networkDownloadSpeedInfo = null;
+           String networkUploadSpeedInfo = null;
+           String networkDownloadTotalInfo = null;
+           String networkUploadTotalInfo = null;
+           if (showNetwork && networkIF != null) {
+               networkIF.updateAttributes();
+               long downloadBytes = networkIF.getBytesRecv();
+               long uploadBytes = networkIF.getBytesSent();
+               double downloadSpeedMbps = (double) (downloadBytes - lastDownloadBytes) * 8 / 1024 / 1024;
+               double uploadSpeedMbps = (double) (uploadBytes - lastUploadBytes) * 8 / 1024 / 1024;
+               if (downloadSpeedMbps < 0) downloadSpeedMbps = 0;
+               if (uploadSpeedMbps < 0) uploadSpeedMbps = 0;
+               lastDownloadBytes = downloadBytes;
+               lastUploadBytes = uploadBytes;
+               networkIPInfo = " ".repeat(15 - networkIF.getIPv4addr()[0].length()) + networkIF.getIPv4addr()[0];
+
+               if (downloadSpeedMbps < 1) {
+                   downloadSpeedMbps *= 1024;
+                   networkDownloadSpeedInfo = String.format(" Download Speed:  %6.2f Kbps", downloadSpeedMbps);
+               } else {
+                   networkDownloadSpeedInfo = String.format(" Download Speed:  %6.2f Mbps", downloadSpeedMbps);
+               }
+               if (uploadSpeedMbps < 1) {
+                   uploadSpeedMbps *= 1024;
+                   networkUploadSpeedInfo = String.format(" Upload Speed:  %8.2f Kbps", uploadSpeedMbps);
+               } else {
+                   networkUploadSpeedInfo = String.format(" Upload Speed:  %8.2f Mbps", uploadSpeedMbps);
+               }
+               networkDownloadTotalInfo = String.format(" Download Total:  %6.2f  GiB", downloadBytes / 1e9);
+               networkUploadTotalInfo = String.format(" Upload Total:  %8.2f  GiB", uploadBytes / 1e9);
+           }
+
+           String finalCpuUsageInfo = cpuUsageInfo;
+           String finalCpuTemperatureInfo = cpuTemperatureInfo;
+           String finalCpuNameInfo = cpuNameInfo;
+           String finalGpuTemperatureInfo = gpuTemperatureInfo;
+           String finalGpuUsageInfo = gpuUsageInfo;
+           String finalGpuNameInfo = gpuNameInfo;
+           String finalRamTotalInfo = ramTotalInfo;
+           String finalRamInUseInfo = ramInUseInfo;
+           String finalRamFreeInfo = ramFreeInfo;
+           String finalSsdTotalInfo = ssdTotalInfo;
+           String finalSsdFreeInfo = ssdFreeInfo;
+           String finalSsdUsedInfo = ssdUsedInfo;
+           String finalNetworkIPInfo = networkIPInfo;
+           String finalNetworkDownloadSpeedInfo = networkDownloadSpeedInfo;
+           String finalNetworkUploadSpeedInfo = networkUploadSpeedInfo;
+           String finalNetworkDownloadTotalInfo = networkDownloadTotalInfo;
+           String finalNetworkUploadTotalInfo = networkUploadTotalInfo;
+
+           SwingUtilities.invokeLater(() -> {
+               kernelLabel.setText(kernelInfo);
+               uptimeLabel.setText(uptimeInfo);
+
+               if (showCpu) {
+                   cpuUsageLabel.setText(finalCpuUsageInfo);
+                   cpuTemperatureLabel.setText(finalCpuTemperatureInfo);
+                   cpuNameLabel.setText(finalCpuNameInfo);
+               }
+
+               if (showGpu) {
+                   gpuTemperatureLabel.setText(finalGpuTemperatureInfo);
+                   gpuUsageLabel.setText(finalGpuUsageInfo);
+                   gpuNameLabel.setText(finalGpuNameInfo);
+               }
+
+               if (showRam) {
+                   ramTotalLabel.setText(finalRamTotalInfo);
+                   ramInUseLabel.setText(finalRamInUseInfo);
+                   ramFreeLabel.setText(finalRamFreeInfo);
+               }
+
+               if (showSsd) {
+                   ssdTotalLabel.setText(finalSsdTotalInfo);
+                   ssdFreeLabel.setText(finalSsdFreeInfo);
+                   ssdUsedLabel.setText(finalSsdUsedInfo);
+               }
+
+               if (showNetwork) {
+                   networkIPLabel.setText(" IP:          " + finalNetworkIPInfo);
+                   networkDownloadSpeedLabel.setText(finalNetworkDownloadSpeedInfo);
+                   networkUploadSpeedLabel.setText(finalNetworkUploadSpeedInfo);
+                   networkDownloadTotalLabel.setText(finalNetworkDownloadTotalInfo);
+                   networkUploadTotalLabel.setText(finalNetworkUploadTotalInfo);
+                   downloadMonitor.startDownload();
+                   uploadMonitor.startUpload();
+                   NetworkMonitor.setNetworkIF(networkIF);
+                   if (networkIF.getIfOperStatus() == NetworkIF.IfOperStatus.DOWN) {
+                       downloadMonitor.resetChart();
+                       uploadMonitor.resetChart();
+                   }
+               }
+
+               if (showProcess) {
+                   processLabel.setText(String.format(" %-9s %7s %10s", "Name", "CPU (%)", "Memory"));
+               }
+
+               if (SettingsPanel.checkSettings) {
+                   updateSetting();
+                   SettingsPanel.checkSettings = Boolean.FALSE;
+               }
+
+               repaint();
+           });
+       } catch (Exception e) {
            System.out.println("Error updating system info: " + e.getMessage());
-        }
-    }
+       }
+   }
+
 
     public void initializeUI() {
         setMaximumSize(new Dimension(1000, getMaximumSize().height));

@@ -124,6 +124,8 @@ public class SystemTrayApp {
         remoteServer.setFont(new Font("Arial", Font.PLAIN, 11));
         JMenuItem remoteClient = new JMenuItem("Client");
         remoteClient.setFont(new Font("Arial", Font.PLAIN, 11));
+        JMenuItem restartItem = new JMenuItem("Restart");
+        restartItem.setFont(new Font("Arial", Font.PLAIN, 12));
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.setFont(new Font("Arial", Font.PLAIN, 12));
 
@@ -132,6 +134,8 @@ public class SystemTrayApp {
         menu.add(refreshMenu);
         menu.addSeparator();
         menu.add(remoteMenu);
+        menu.addSeparator();
+        menu.add(restartItem);
         menu.addSeparator();
         menu.add(exitItem);
 
@@ -174,7 +178,9 @@ public class SystemTrayApp {
                 throw new RuntimeException(ex);
             }
         }).start());
-
+        restartItem.addActionListener(e -> {
+            SystemMonitorUI.restart();
+        });
         exitItem.addActionListener(e -> System.exit(0));
 
         menu.addPopupMenuListener(new PopupMenuListener() {

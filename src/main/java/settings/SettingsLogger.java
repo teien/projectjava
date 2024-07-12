@@ -79,8 +79,8 @@ public class SettingsLogger {
         "yc": 0
     },
     "Style": {
-        "bgColor": 1309486352,
-        "fontColor1": -16724788,
+        "bgColor": 319630608,
+        "fontColor1": -13108,
         "fontColor2": -65536,
         "fontSize1": 12,
         "fontSize2": 14,
