@@ -1,4 +1,4 @@
-package Main;
+package main;
 
 import com.sun.jna.Native;
 import com.sun.jna.platform.win32.User32;
@@ -19,6 +19,8 @@ import system.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.URL;
@@ -151,28 +153,21 @@ public class SystemMonitorUI extends JFrame {
                 }
             }
         }
-
-        // reset panel system.NetworkMonitor
-
     }
 
     public static void restart() {
         try {
-            // Lấy đường dẫn tới java bin
             String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
             System.out.println("Java bin path: " + javaBin);
 
-            // Lấy đường dẫn tới JAR hiện tại
             File currentJar = new File(SystemMonitorUI.class.getProtectionDomain().getCodeSource().getLocation().toURI());
             System.out.println("Current JAR path: " + currentJar.getPath());
 
-            // Kiểm tra xem có phải là file JAR không
             if (!currentJar.getName().endsWith(".jar")) {
                 System.out.println("The current file is not a JAR file.");
                 return;
             }
 
-            // Tạo lệnh khởi động lại ứng dụng
             List<String> command = new ArrayList<>();
             command.add(javaBin);
             command.add("-jar");
@@ -186,8 +181,6 @@ public class SystemMonitorUI extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        // Thoát ứng dụng hiện tại sau khi đã khởi chạy quá trình mới
         System.exit(0);
     }
 
@@ -561,6 +554,7 @@ public class SystemMonitorUI extends JFrame {
             setAlwaysOnTop(true);
         }
 
+
         setFocusableWindowState(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBackground(new Color(0, 0, 0, 0));
@@ -751,6 +745,7 @@ public class SystemMonitorUI extends JFrame {
         add(panel);
     }
 
+
     private String formatUptime(long seconds) {
         long hours = seconds / 3600;
         long minutes = (seconds % 3600) / 60;
@@ -762,8 +757,8 @@ public class SystemMonitorUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             JFrame dummyFrame = new JFrame();
             SettingUI settingsUI = new SettingUI(dummyFrame);
-            settingsUI.setVisible(true);
-            if (settingsUI.isSettingsAccepted()) {
+            // settingsUI.setVisible(true);
+           // if (settingsUI.isSettingsAccepted()) {
                 SystemMonitorUI ui = new SystemMonitorUI(
                         settingsUI.isCpuSelected(),
                         settingsUI.isRamSelected(),
@@ -779,7 +774,7 @@ public class SystemMonitorUI extends JFrame {
                 int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
                 exStyle |= WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
                 User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-            }
+           // }
         });
         new Thread(SystemTrayApp::new).start();
     }

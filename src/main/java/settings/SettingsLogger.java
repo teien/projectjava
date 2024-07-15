@@ -102,7 +102,7 @@ public class SettingsLogger {
         }
 }""";
 
-    private static File getSettingsFile() {
+    static File getSettingsFile() {
         String jarDir;
         try {
             jarDir = new File(SettingsLogger.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();

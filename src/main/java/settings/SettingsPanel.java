@@ -5,6 +5,8 @@ import org.json.JSONObject;
 import javax.swing.*;
 import java.awt.*;
 
+import static settings.SettingsLogger.getSettingsFile;
+
 public class SettingsPanel extends JPanel {
 
     private static JSpinner fontSizeSpinner1 = new JSpinner();
@@ -120,6 +122,12 @@ public class SettingsPanel extends JPanel {
 
         contentPanel.add(opacitySlider, gbc);
         gbc.gridwidth = 1;
+        // Open Settings
+        gbc.gridx = 3;
+        JButton settingsButton = new JButton("Open Json Settings");
+        contentPanel.add(settingsButton, gbc);
+
+
 
         // Background Color
         gbc.gridx = 0;
@@ -139,6 +147,15 @@ public class SettingsPanel extends JPanel {
         });
         contentPanel.add(bgColorButton, gbc);
         add(contentPanel, BorderLayout.CENTER);
+
+
+        settingsButton.addActionListener(e -> {
+            try {
+                Desktop.getDesktop().open(getSettingsFile());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        });
     }
 
     public static int getSelectedFontSize1() {
