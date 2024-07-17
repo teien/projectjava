@@ -1,11 +1,7 @@
 {
-    "diskName": "C:",
     "Show/Hide": {
         "STORAGE": {
-            "showSsdName": true,
-            "showSsdUsed": true,
-            "showSsdTotal": true,
-            "showSsdFree": true,
+            "showDisk": true,
             "showSSDTitle": true
         },
         "SYSTEM": {
@@ -59,22 +55,28 @@
         "File": 49152
     },
     "Screen": {
-        "alwaysOnTop": false,
-        "width": 230,
+        "alwaysOnTop": true,
+        "width": 232,
         "yc": 0,
-        "xc": 240,
-        "height": 920
+        "xc": 232,
+        "height": 930
     },
     "Style": {
-        "bgColor": 17640720,
-        "fontType1": "JetBrains Mono NL Thin",
-        "fontType2": "JetBrains Mono Thin",
-        "fontSize1": 11,
-        "fontColor2": -65536,
-        "fontColor1": -16737895,
-        "fontSize2": 16,
+        "bgColor": 402653183,
+        "fontType1": "JetBrains Mono NL Medium",
+        "fontType2": "JetBrains Mono NL ExtraLight",
+        "fontSize1": 12,
+        "fontColor2": -16737895,
+        "fontColor1": -3355444,
+        "fontSize2": 15,
         "opacity": 1
     },
     "Paths": {"sensorDataFilePath": "C:\\\\ProgramData\\\\sensorData.json"},
+    "ProgressBar": {
+        "progressBarHeight": 12,
+        "progressBarWidth": 214,
+        "progressBarBackgroundColor": 402653183,
+        "progressBarForegroundColor": -16737895
+    },
     "Chart": {"chartWidth": 214}
 }

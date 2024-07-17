@@ -70,19 +70,16 @@ public class NetworkMonitor extends JPanel {
         );
         customizeChart(chart, color);
         ChartPanel panel = new ChartPanel(chart);
-        setLayout(new BorderLayout());
+        setLayout(new GridLayout(1, 1));
+
         JSONObject settings = SettingsLogger.loadSettings();
         int wc = settings.getJSONObject("Chart").getInt("chartWidth");
         panel.setPreferredSize(new Dimension(wc, 60));
-        panel.setBackground(new Color(0, 0, 0, 0));
-        panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
-        add(panel, BorderLayout.WEST);
-
-        setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+        setPreferredSize(new Dimension(wc, 60));
+        panel.setBackground(new Color(0, 0,0, 0));
+        panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
+        add(panel);
         setBackground(new Color(0, 0, 0, 0));
-        setOpaque(false);
-
         if (isDownload) {
             this.downloadPlot = chart.getXYPlot();
             if (networkIF != null) {
