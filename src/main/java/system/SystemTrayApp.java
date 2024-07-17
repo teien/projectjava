@@ -20,7 +20,7 @@ public class SystemTrayApp {
 
         public SettingsDialog(JFrame parent) {
             super(parent, "Settings", true);
-            setSize(720, 350);
+            setSize(730, 350);
             setLocationRelativeTo(parent);
             setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
