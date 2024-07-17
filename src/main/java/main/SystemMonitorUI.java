@@ -101,9 +101,10 @@ public class SystemMonitorUI extends JFrame {
     private static int cpuNumber;
     private NetworkMonitor downloadMonitor;
     private NetworkMonitor uploadMonitor;
-    private static JLabel[] diskLabel = new JLabel[10];
+    private static JLabel[] diskLabel = new JLabel[100];
 
-    private JProgressBar[] diskProgressBars = new JProgressBar[10];
+    private JProgressBar[] diskProgressBars = new JProgressBar[100];
+    private JPanel[] progressBarPanel = new JPanel[100];
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
         this.showCpu = showCpu;
@@ -134,6 +135,7 @@ public class SystemMonitorUI extends JFrame {
         cpuNumber = processor.getLogicalProcessorCount();
         hal = systemInfo.getHardware();
         os = systemInfo.getOperatingSystem();
+        //network
         List<NetworkIF> networkIFs = hal.getNetworkIFs();
         if (!networkIFs.isEmpty()) {
             for (NetworkIF networkIF : networkIFs) {
@@ -143,8 +145,24 @@ public class SystemMonitorUI extends JFrame {
                 }
             }
         }
+        //disk
         drives = File.listRoots();
-        drives = Arrays.stream(drives).filter(drive -> drive.getTotalSpace() > 0).toArray(File[]::new);
+        Boolean showAllDisk = settings.getJSONObject("Disk").getBoolean("showAllDisk");
+        if (showAllDisk) {
+            drives = Arrays.stream(drives).filter(drive -> drive.getTotalSpace() > 0).toArray(File[]::new);
+        } else {
+            String drivesList = settings.getJSONObject("Disk").getString("diskName");
+            String[] driveList = drivesList.split(",");
+            List<File> driveListFiltered = new ArrayList<>();
+            for (String driveName : driveList) {
+                for (File drive : drives) {
+                    if (drive.toString().contains(driveName)) {
+                        driveListFiltered.add(drive);
+                    }
+                }
+            }
+            drives = driveListFiltered.toArray(new File[0]);
+        }
     }
 
     public static void restart() {
@@ -313,7 +331,11 @@ public class SystemMonitorUI extends JFrame {
         setBackgroundColorUpdate();
         updateLocationScreen();
         initializeSystemInfo();
+        updateDiskInfo();
+
+
     }
+
 
     void updateLocationScreen() {
         int w = settings.getJSONObject("Screen").getInt("width");
@@ -449,26 +471,29 @@ public class SystemMonitorUI extends JFrame {
                if (drives != null && drives.length > 0) {
                    driveInfos = new String[drives.length];
                    for (int i = 0; i < drives.length; i++) {
-                          File drive = drives[i];
-                          String driveName = drive.toString().replace("\\", "");
-                          long totalSpace = drive.getTotalSpace();
-                          long usableSpace = drive.getUsableSpace();
-                          long usedSpace = totalSpace - usableSpace;
-                          if (totalSpace < 1e12) {
-                              diskInfo = String.format(" %s %12.2f GB/%6.2f GB",
-                                      driveName,
-                                      usableSpace / 1e9,
-                                      totalSpace / 1e9);
-                          } else {
-                              diskInfo = String.format(" %s %12.2f TB/%6.2f TB",
-                                      driveName,
-                                      usableSpace / 1e12,
-                                      totalSpace / 1e12);
-                          }
-                          driveInfos[i] = diskInfo;
-
-                       driveTotalSpace[i] = (long) (totalSpace/1e9);
-                       driveUsageSpace[i] = (long) (usedSpace/1e9);
+                       if (drives[i].getTotalSpace() > 0) {
+                           File drive = drives[i];
+                           String driveName = drive.toString().replace("\\", "");
+                           long totalSpace = drive.getTotalSpace();
+                           long usableSpace = drive.getUsableSpace();
+                           long usedSpace = totalSpace - usableSpace;
+                           if (totalSpace < 1e12) {
+                               diskInfo = String.format(" %s %12.2f GB/%6.2f GB",
+                                       driveName,
+                                       usableSpace / 1e9,
+                                       totalSpace / 1e9);
+                           } else {
+                               diskInfo = String.format(" %s %12.2f TB/%6.2f TB",
+                                       driveName,
+                                       usableSpace / 1e12,
+                                       totalSpace / 1e12);
+                           }
+                           driveInfos[i] = diskInfo;
+                           driveTotalSpace[i] = (long) (totalSpace / 1e9);
+                           driveUsageSpace[i] = (long) (usedSpace / 1e9);
+                       }    else {
+                           driveInfos[i] = "";
+                       }
                    }
 
                }
@@ -546,15 +571,18 @@ public class SystemMonitorUI extends JFrame {
                    ramFreeLabel.setText(finalRamFreeInfo);
                }
                if (showSsd) {
+
                      for (int i = 0; i < drives.length; i++) {
                          if (diskLabel[i] != null ) {
                              diskLabel[i].setText(finalDiskInfo[i]);
                              if (driveTotalSpace[i] > 0) {
                                  updateDiskProgressBar(i, driveUsageSpace[i], driveTotalSpace[i]);
-                                 diskProgressBars[i].setVisible(true);
+                                  progressBarPanel[i].setVisible(true);
+                                 diskLabel[i].setVisible(true);
                              }  else {
                                  diskLabel[i].setText("");
-                                 diskProgressBars[i].setVisible(false);
+                                 progressBarPanel[i].setVisible(false);
+                                 diskLabel[i].setVisible(false);
                              }
 
                          }
@@ -583,7 +611,7 @@ public class SystemMonitorUI extends JFrame {
                    updateSetting();
                    SettingsPanel.checkSettings = Boolean.FALSE;
                }
-
+               revalidate();
                repaint();
            });
        } catch (Exception e) {
@@ -600,9 +628,9 @@ public class SystemMonitorUI extends JFrame {
         });
     }
 
-
     public void initializeUI() {
         setMaximumSize(new Dimension(1000, getMaximumSize().height));
+
         int w = settings.getJSONObject("Screen").getInt("width");
         int h = settings.getJSONObject("Screen").getInt("height");
         setSize(new Dimension(w, h));
@@ -668,13 +696,22 @@ public class SystemMonitorUI extends JFrame {
         ramTotalLabel = createLabel(" RAM Total: 0 GiB");
         ramInUseLabel = createLabel(" In Use: 0 GiB");
         ramFreeLabel = createLabel(" Free: 0 GiB");
-        JPanel[] progressBarPanel = new JPanel[drives.length];
+
         int progressBarHeight = settings.getJSONObject("ProgressBar").optInt("progressBarHeight", 12);
         for (int i = 0; i < drives.length; i++) {
             diskLabel[i] = createLabel(" --");
             diskProgressBars[i] = createProgressBar();
             progressBarPanel[i]  = createProgressBarPanel(diskProgressBars[i], 230, progressBarHeight);
         }
+        for (int i = drives.length; i < 20; i++) {
+            diskLabel[i] = createLabel("");
+            diskProgressBars[i] = createProgressBar();
+            progressBarPanel[i]  = createProgressBarPanel(diskProgressBars[i], 230, progressBarHeight);
+            diskLabel[i].setVisible(false);
+            progressBarPanel[i].setVisible(false);
+        }
+
+
         networkIPLabel = createLabel(" IP: --");
         networkDownloadSpeedLabel = createLabel(" Download Speed: 0 kB/s");
         networkUploadSpeedLabel = createLabel(" Upload Speed: 0 kB/s");
@@ -774,6 +811,14 @@ public class SystemMonitorUI extends JFrame {
                 for (int i = 0; i < drives.length; i++) {
                     panel.add(diskLabel[i]);
                     panel.add(progressBarPanel[i]);
+                    diskLabel[i].setVisible(true);
+                    progressBarPanel[i].setVisible(true);
+                }
+                for (int i = drives.length; i < 20; i++) {
+                    panel.add(diskLabel[i]);
+                    panel.add(progressBarPanel[i]);
+                    diskLabel[i].setVisible(false);
+                    progressBarPanel[i].setVisible(false);
                 }
         }}
 
@@ -811,11 +856,11 @@ public class SystemMonitorUI extends JFrame {
         }
         panel.add(Box.createVerticalGlue());
         add(panel);
+
     }
     private JPanel createProgressBarPanel(JProgressBar progressBar, int width, int height) {
         JPanel progressBarPanel = new JPanel();
         progressBarPanel.setLayout(new GridLayout(1, 1));
-
         progressBarPanel.setPreferredSize(new Dimension(width, height));
         progressBar.setPreferredSize(new Dimension(width, height));
         progressBarPanel.setBorder(BorderFactory.createEmptyBorder(1, 8, 1, 8));
@@ -831,7 +876,7 @@ public class SystemMonitorUI extends JFrame {
         progressBar.setStringPainted(true);
         progressBar.setValue(0);
         progressBar.setString("0%");
-        progressBar.setFont(new Font("Monospace", Font.ITALIC, 8));
+        progressBar.setFont(new Font("JetBrains Mono NL Medium", Font.ITALIC, 8));
         progressBar.setBorderPainted(false);
         progressBar.setForeground(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarForegroundColor")));
         progressBar.setBackground(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarBackgroundColor"), true));
