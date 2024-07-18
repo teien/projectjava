@@ -111,7 +111,7 @@ public class SystemTrayApp {
         JPopupMenu menu = new JPopupMenu();
 
         JMenuItem settingsItem = new JMenuItem("Settings");
-        JMenu refreshMenu = new JMenu("Refresh");
+        JMenuItem refreshMenu = new JMenuItem("Refresh");
         JMenu remoteMenu = new JMenu("Remote");
         JMenuItem updateWeather = new JMenuItem("Weather");
         JMenuItem updateNetwork = new JMenuItem("Network");
@@ -134,9 +134,9 @@ public class SystemTrayApp {
         menu.add(exitItem);
 
 
-        refreshMenu.add(updateWeather);
+       /* refreshMenu.add(updateWeather);
         refreshMenu.addSeparator();
-        refreshMenu.add(updateNetwork);
+        refreshMenu.add(updateNetwork);*/
 
         remoteMenu.add(remoteServer);
         remoteMenu.addSeparator();
@@ -148,16 +148,24 @@ public class SystemTrayApp {
             settingsDialog.setVisible(true);
         });
 
-        updateWeather.addActionListener(e -> new Thread(() -> {
+        /*updateWeather.addActionListener(e -> new Thread(() -> {
             try {
                 SystemMonitorUI.updateWeatherInfo();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
-        }).start());
-        updateNetwork.addActionListener(e -> new Thread( () -> {
+        }).start());*/
+        /*updateNetwork.addActionListener(e -> new Thread( () -> {
             try {
                 SystemMonitorUI.initializeSystemInfo();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());*/
+        refreshMenu.addActionListener(e -> new Thread(() -> {
+            try {
+                SystemMonitorUI.initializeSystemInfo();
+                SystemMonitorUI.updateWeatherInfo();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }

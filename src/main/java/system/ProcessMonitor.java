@@ -5,26 +5,27 @@ import java.util.Map;
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 import oshi.util.FormatUtil;
+import oshi.util.GlobalConfig;
+
 import javax.swing.*;
 
 
 public class ProcessMonitor {
     private final OperatingSystem os;
-    private final Map<Integer, Long> previousTimes;
-    private final Map<Integer, Long> previousUpTimes;
+    private final Map<Integer, Long> previousTimes = new java.util.HashMap<>();
+    private final Map<Integer, Long> previousUpTimes = new java.util.HashMap<>();
     private final int cpuNumber;
     private final JLabel[] processListLabel;
-
-    public ProcessMonitor(OperatingSystem os, Map<Integer, Long> previousTimes, Map<Integer, Long> previousUpTimes, int cpuNumber, JLabel[] processListLabel) {
+    public ProcessMonitor(OperatingSystem os, int cpuNumber, JLabel[] processListLabel) {
         this.os = os;
-        this.previousTimes = previousTimes;
-        this.previousUpTimes = previousUpTimes;
         this.cpuNumber = cpuNumber;
         this.processListLabel = processListLabel;
+
     }
 
     public void printProcesses() {
-        List<OSProcess> processes = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 5);
+        GlobalConfig.set(GlobalConfig.OSHI_OS_WINDOWS_CPU_UTILITY, true);
+        List<OSProcess> processes = os.getProcesses(OperatingSystem.ProcessFiltering.ALL_PROCESSES, OperatingSystem.ProcessSorting.CPU_DESC, 5);
         int labelIndex = 0;
         for (OSProcess process : processes) {
             if (isSystemIdleProcess(process)) {
@@ -39,7 +40,9 @@ public class ProcessMonitor {
     }
 
     private boolean isSystemIdleProcess(OSProcess process) {
-        return process.getProcessID() == 0 || "Idle".equals(process.getName());
+        int pid = process.getProcessID();
+        String name = process.getName();
+        return pid == 0 || "Idle".equals(name); // Combined check for efficiency
     }
 
     private void updateProcessInfo(OSProcess process, int labelIndex) {
@@ -57,14 +60,13 @@ public class ProcessMonitor {
             return;
         }
 
+
         double cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
 
         previousTimes.put(processId, currentTime);
         previousUpTimes.put(processId, currentUpTime);
 
-
         int usedCores = estimateUsedCores(cpuLoad);
-
         cpuLoad /= usedCores;
 
         processName = formatProcessName(processName);
@@ -72,7 +74,8 @@ public class ProcessMonitor {
     }
 
     private int estimateUsedCores(double cpuLoad) {
-        int estimatedCores = (int) Math.ceil(cpuLoad / 100 * cpuNumber);
+        double coreUsageFactor = 0.25;
+        int estimatedCores = (int) Math.ceil(Math.min(cpuLoad, 100.0) / 100 * cpuNumber * coreUsageFactor);
         return Math.max(1, Math.min(cpuNumber, estimatedCores));
     }
     private double calculateCpuLoad(long currentTime, long previousTime, long currentUpTime, long previousUpTime) {

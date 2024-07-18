@@ -74,8 +74,8 @@ public class NetworkMonitor extends JPanel {
 
         JSONObject settings = SettingsLogger.loadSettings();
         int wc = settings.getJSONObject("Chart").getInt("chartWidth");
-        panel.setPreferredSize(new Dimension(wc, 60));
-        setPreferredSize(new Dimension(wc, 60));
+        panel.setPreferredSize(new Dimension(wc, 50));
+        setPreferredSize(new Dimension(wc, 50));
         panel.setBackground(new Color(0, 0,0, 0));
         panel.setBorder(BorderFactory.createEmptyBorder(0, 0, 2, 0));
         add(panel);

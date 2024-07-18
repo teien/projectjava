@@ -77,8 +77,7 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showGpu;
     private final boolean showProcess;
 
-    private static final Map<Integer, Long> previousTimes = new HashMap<>();
-    private static final Map<Integer, Long> previousUpTimes = new HashMap<>();
+
     private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
@@ -101,10 +100,10 @@ public class SystemMonitorUI extends JFrame {
     private static int cpuNumber;
     private NetworkMonitor downloadMonitor;
     private NetworkMonitor uploadMonitor;
-    private static JLabel[] diskLabel = new JLabel[100];
+    private static final JLabel[] diskLabel = new JLabel[100];
 
-    private JProgressBar[] diskProgressBars = new JProgressBar[100];
-    private JPanel[] progressBarPanel = new JPanel[100];
+    private final JProgressBar[] diskProgressBars = new JProgressBar[100];
+    private final JPanel[] progressBarPanel = new JPanel[100];
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
         this.showCpu = showCpu;
@@ -131,8 +130,8 @@ public class SystemMonitorUI extends JFrame {
     public static void initializeSystemInfo() {
         SystemInfo systemInfo = new SystemInfo();
         CentralProcessor processor = systemInfo.getHardware().getProcessor();
-        //  cpuNumber = processor.getPhysicalProcessorCount() * processor.getPhysicalPackageCount();
         cpuNumber = processor.getLogicalProcessorCount();
+
         hal = systemInfo.getHardware();
         os = systemInfo.getOperatingSystem();
         //network
@@ -147,7 +146,7 @@ public class SystemMonitorUI extends JFrame {
         }
         //disk
         drives = File.listRoots();
-        Boolean showAllDisk = settings.getJSONObject("Disk").getBoolean("showAllDisk");
+        boolean showAllDisk = settings.getJSONObject("Disk").getBoolean("showAllDisk");
         if (showAllDisk) {
             drives = Arrays.stream(drives).filter(drive -> drive.getTotalSpace() > 0).toArray(File[]::new);
         } else {
@@ -163,8 +162,37 @@ public class SystemMonitorUI extends JFrame {
             }
             drives = driveListFiltered.toArray(new File[0]);
         }
-    }
 
+
+    }
+    private void startUpdateTimer() {
+        // Update weather if first time can not be done because of network issues
+        if ((showNetwork) && (networkIPLabel.getText().equals(" IP: --"))) {
+            checkUpdateNet.scheduleAtFixedRate(() -> {
+                initializeSystemInfo();
+                updateWeatherInfo();
+                if (!networkIPLabel.getText().equals(" IP: --")) {
+                    checkUpdateNet.shutdown();
+                }
+            }, 20, 10, TimeUnit.SECONDS);
+        }
+
+        if (showWeather) {
+            weatherUpdateExecutor.scheduleAtFixedRate(SystemMonitorUI::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
+        }
+        systemInfoExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
+            initializeSystemInfo();
+            updateSystemInfo();
+        }), 0, 1, TimeUnit.SECONDS);
+        ProcessMonitor pm = new ProcessMonitor(os, cpuNumber, processListLabel);
+
+        processExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
+            if (showProcess) {
+                pm.printProcesses();
+            }
+        }), 0, 1, TimeUnit.SECONDS);
+
+    }
     public static void restart() {
         try {
             String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
@@ -221,7 +249,6 @@ public class SystemMonitorUI extends JFrame {
                         String driveName = drive.toString().replace("\\", "");
                         long totalSpace = drive.getTotalSpace();
                         long usableSpace = drive.getUsableSpace();
-                        long usedSpace = totalSpace - usableSpace;
                         if (totalSpace < 1e12) {
                             diskInfo = String.format(" %s %12.2f GB/%.2f GB",
                                     driveName,
@@ -276,30 +303,7 @@ public class SystemMonitorUI extends JFrame {
         }
     }
 
-    private void startUpdateTimer() {
-        // Update weather if first time can not be done because of network issues
-        if ((showNetwork) && (networkIPLabel.getText().equals(" IP: --"))) {
-            checkUpdateNet.scheduleAtFixedRate(() -> {
-              initializeSystemInfo();
-                updateWeatherInfo();
-                if (!networkIPLabel.getText().equals(" IP: --")) {
-                    checkUpdateNet.shutdown();
-                }
-            }, 20, 10, TimeUnit.SECONDS);
-        }
-        if (showWeather) {
-            weatherUpdateExecutor.scheduleAtFixedRate(SystemMonitorUI::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
-        }
-        systemInfoExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(this::updateSystemInfo), 0, 1, TimeUnit.SECONDS);
-        ProcessMonitor pm = new ProcessMonitor(os, previousTimes, previousUpTimes, cpuNumber, processListLabel);
 
-        processExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
-            if (showProcess) {
-                pm.printProcesses();
-            }
-        }), 0, 3 / 2, TimeUnit.SECONDS);
-
-    }
 
     private JLabel createLabel(String text) {
         JLabel label = new JLabel(text);
@@ -331,8 +335,6 @@ public class SystemMonitorUI extends JFrame {
         setBackgroundColorUpdate();
         updateLocationScreen();
         initializeSystemInfo();
-        updateDiskInfo();
-
 
     }
 
@@ -432,7 +434,7 @@ public class SystemMonitorUI extends JFrame {
            String cpuTemperatureInfo = null;
            String cpuNameInfo = null;
            if (showCpu) {
-               Double cpuLoad = hwInfo.cpuUsage();
+              Double cpuLoad = hwInfo.cpuUsage();
                cpuUsageInfo = String.format(" CPU Usage: %15.1f %%", cpuLoad);
                Double cpuTemperature = hwInfo.cpuTemperature();
                cpuTemperatureInfo = String.format(" CPU Temperature: %9.1f°C", cpuTemperature);
@@ -464,11 +466,11 @@ public class SystemMonitorUI extends JFrame {
            }
 
            String diskInfo = null;
-           String[] driveInfos = null;
+           String[] driveInfos = new String[100];
            long[] driveTotalSpace = new long[drives.length];
            long[] driveUsageSpace = new long[drives.length];
            if (showSsd) {
-               if (drives != null && drives.length > 0) {
+               if (drives.length > 0) {
                    driveInfos = new String[drives.length];
                    for (int i = 0; i < drives.length; i++) {
                        if (drives[i].getTotalSpace() > 0) {
@@ -547,7 +549,8 @@ public class SystemMonitorUI extends JFrame {
            String finalNetworkDownloadTotalInfo = networkDownloadTotalInfo;
            String finalNetworkUploadTotalInfo = networkUploadTotalInfo;
 
-           String[] finalDiskInfo = driveInfos;
+           String[] finalDiskInfo = new String[100];
+           System.arraycopy(driveInfos, 0, finalDiskInfo, 0, drives.length);
 
            SwingUtilities.invokeLater(() -> {
                kernelLabel.setText(kernelInfo);
@@ -571,9 +574,8 @@ public class SystemMonitorUI extends JFrame {
                    ramFreeLabel.setText(finalRamFreeInfo);
                }
                if (showSsd) {
-
-                     for (int i = 0; i < drives.length; i++) {
-                         if (diskLabel[i] != null ) {
+                     for (int i = 0; i < drives.length+20; i++) {
+                         if (diskLabel[i] != null && finalDiskInfo[i] != null) {
                              diskLabel[i].setText(finalDiskInfo[i]);
                              if (driveTotalSpace[i] > 0) {
                                  updateDiskProgressBar(i, driveUsageSpace[i], driveTotalSpace[i]);
@@ -701,12 +703,12 @@ public class SystemMonitorUI extends JFrame {
         for (int i = 0; i < drives.length; i++) {
             diskLabel[i] = createLabel(" --");
             diskProgressBars[i] = createProgressBar();
-            progressBarPanel[i]  = createProgressBarPanel(diskProgressBars[i], 230, progressBarHeight);
+            progressBarPanel[i]  = createProgressBarPanel(diskProgressBars[i], progressBarHeight);
         }
         for (int i = drives.length; i < 20; i++) {
             diskLabel[i] = createLabel("");
             diskProgressBars[i] = createProgressBar();
-            progressBarPanel[i]  = createProgressBarPanel(diskProgressBars[i], 230, progressBarHeight);
+            progressBarPanel[i]  = createProgressBarPanel(diskProgressBars[i], progressBarHeight);
             diskLabel[i].setVisible(false);
             progressBarPanel[i].setVisible(false);
         }
@@ -858,12 +860,12 @@ public class SystemMonitorUI extends JFrame {
         add(panel);
 
     }
-    private JPanel createProgressBarPanel(JProgressBar progressBar, int width, int height) {
+    private JPanel createProgressBarPanel(JProgressBar progressBar, int height) {
         JPanel progressBarPanel = new JPanel();
-        progressBarPanel.setLayout(new GridLayout(1, 1));
-        progressBarPanel.setPreferredSize(new Dimension(width, height));
-        progressBar.setPreferredSize(new Dimension(width, height));
-        progressBarPanel.setBorder(BorderFactory.createEmptyBorder(1, 8, 1, 8));
+        progressBarPanel.setLayout(new GridLayout(0, 1));
+        progressBarPanel.setPreferredSize(new Dimension(230, height));
+        progressBar.setPreferredSize(new Dimension(230, height));
+        progressBarPanel.setBorder(BorderFactory.createEmptyBorder(1, 6, 1, 6));
         progressBarPanel.setOpaque(true);
         progressBarPanel.setBackground(new Color(0, 0, 0, 0));
         progressBarPanel.add(progressBar);
@@ -876,16 +878,12 @@ public class SystemMonitorUI extends JFrame {
         progressBar.setStringPainted(true);
         progressBar.setValue(0);
         progressBar.setString("0%");
-        progressBar.setFont(new Font("JetBrains Mono NL Medium", Font.ITALIC, 8));
+        progressBar.setFont(new Font("Monospace", Font.ITALIC, 10));
         progressBar.setBorderPainted(false);
         progressBar.setForeground(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarForegroundColor")));
         progressBar.setBackground(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarBackgroundColor"), true));
         return progressBar;
     }
-
-
-
-
     private String formatUptime(long seconds) {
         long hours = seconds / 3600;
         long minutes = (seconds % 3600) / 60;
@@ -895,6 +893,7 @@ public class SystemMonitorUI extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+
             JFrame dummyFrame = new JFrame();
             SettingUI settingsUI = new SettingUI(dummyFrame);
             // settingsUI.setVisible(true);

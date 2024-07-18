@@ -59,24 +59,28 @@
         "width": 232,
         "yc": 0,
         "xc": 232,
-        "height": 1000
+        "height": 936
     },
     "Style": {
         "bgColor": 402653183,
-        "fontType1": "JetBrains Mono NL SemiBold",
-        "fontType2": "Bad Script",
+        "fontType1": "JetBrains Mono NL Medium",
+        "fontType2": "JetBrains Mono NL ExtraLight",
         "fontSize1": 12,
         "fontColor2": -16737895,
-        "fontColor1": -1,
-        "fontSize2": 15,
+        "fontColor1": -3355444,
+        "fontSize2": 16,
         "opacity": 1
     },
     "Paths": {"sensorDataFilePath": "C:\\\\ProgramData\\\\sensorData.json"},
     "ProgressBar": {
-        "progressBarHeight": 12,
+        "progressBarHeight": 10,
         "progressBarWidth": 214,
         "progressBarBackgroundColor": 402653183,
         "progressBarForegroundColor": -16737895
+    },
+    "Disk": {
+        "diskName": "C,D,F",
+        "showAllDisk": false
     },
     "Chart": {"chartWidth": 214}
 }
