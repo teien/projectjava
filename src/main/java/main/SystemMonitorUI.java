@@ -11,6 +11,7 @@ import oshi.hardware.GlobalMemory;
 import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
 import oshi.software.os.OperatingSystem;
+import oshi.util.GlobalConfig;
 import settings.SettingUI;
 import settings.SettingsLogger;
 import settings.SettingsPanel;
@@ -25,6 +26,7 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.*;
+import java.util.Timer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -66,6 +68,7 @@ public class SystemMonitorUI extends JFrame {
     private static OperatingSystem os;
     private static NetworkIF networkIF;
     private static File[] drives;
+    private  double cpuLoad;
     private long lastDownloadBytes;
     private long lastUploadBytes;
 
@@ -82,6 +85,8 @@ public class SystemMonitorUI extends JFrame {
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService processExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService cpuLoadExecutor =  Executors.newSingleThreadScheduledExecutor()    ;
+
     private static int fontColor1;
     private static int fontColor2;
     private static String fontType2;
@@ -104,6 +109,9 @@ public class SystemMonitorUI extends JFrame {
 
     private final JProgressBar[] diskProgressBars = new JProgressBar[100];
     private final JPanel[] progressBarPanel = new JPanel[100];
+    private static CentralProcessor processor;
+    private static long[] prevTicks = null ;
+    private static long[] ticks;
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
         this.showCpu = showCpu;
@@ -113,6 +121,8 @@ public class SystemMonitorUI extends JFrame {
         this.showWeather = showWeather;
         this.showGpu = showGpu;
         this.showProcess = showProcess;
+
+
 
         initializeSystemInfo();
         updateDiskInfo();
@@ -128,8 +138,11 @@ public class SystemMonitorUI extends JFrame {
     }
 
     public static void initializeSystemInfo() {
+       
         SystemInfo systemInfo = new SystemInfo();
-        CentralProcessor processor = systemInfo.getHardware().getProcessor();
+        GlobalConfig.set(GlobalConfig.OSHI_OS_WINDOWS_CPU_UTILITY, true);
+        processor = systemInfo.getHardware().getProcessor();
+        ticks = processor.getSystemCpuLoadTicks();
         cpuNumber = processor.getLogicalProcessorCount();
 
         hal = systemInfo.getHardware();
@@ -162,8 +175,6 @@ public class SystemMonitorUI extends JFrame {
             }
             drives = driveListFiltered.toArray(new File[0]);
         }
-
-
     }
     private void startUpdateTimer() {
         // Update weather if first time can not be done because of network issues
@@ -176,7 +187,8 @@ public class SystemMonitorUI extends JFrame {
                 }
             }, 20, 10, TimeUnit.SECONDS);
         }
-
+        ticks = processor.getSystemCpuLoadTicks();
+        cpuLoadExecutor.scheduleAtFixedRate(this::getCpuLoad, 0, 1, TimeUnit.SECONDS);
         if (showWeather) {
             weatherUpdateExecutor.scheduleAtFixedRate(SystemMonitorUI::updateWeatherInfo, 0, 30, TimeUnit.MINUTES);
         }
@@ -430,11 +442,14 @@ public class SystemMonitorUI extends JFrame {
 
            ServiceManager.HwInfo hwInfo = ServiceManager.HwInfo.getHwInfo();
 
+
+
            String cpuUsageInfo = null;
            String cpuTemperatureInfo = null;
            String cpuNameInfo = null;
+
            if (showCpu) {
-              Double cpuLoad = hwInfo.cpuUsage();
+
                cpuUsageInfo = String.format(" CPU Usage: %15.1f %%", cpuLoad);
                Double cpuTemperature = hwInfo.cpuTemperature();
                cpuTemperatureInfo = String.format(" CPU Temperature: %9.1f°C", cpuTemperature);
@@ -620,6 +635,18 @@ public class SystemMonitorUI extends JFrame {
            System.out.println("Error updating system info: " + e.getMessage());
        }
    }
+
+    private void getCpuLoad()  {
+        prevTicks = ticks;
+        cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks)*100;
+        if (cpuLoad < 0) {
+            cpuLoad = 0;
+        }
+        if (cpuLoad > 100) {
+            cpuLoad = 100;
+        }
+        ticks = processor.getSystemCpuLoadTicks();
+    }
 
     private void updateDiskProgressBar(int index, long usedSpace, long totalSpace) {
         int percent = (int) (usedSpace * 100 / totalSpace);

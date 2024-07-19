@@ -67,15 +67,14 @@ public class ProcessMonitor {
         previousUpTimes.put(processId, currentUpTime);
 
         int usedCores = estimateUsedCores(cpuLoad);
-        cpuLoad /= usedCores;
+
 
         processName = formatProcessName(processName);
         updateLabel(labelIndex, processName, cpuLoad, process.getResidentSetSize());
     }
 
     private int estimateUsedCores(double cpuLoad) {
-        double coreUsageFactor = 0.25;
-        int estimatedCores = (int) Math.ceil(Math.min(cpuLoad, 100.0) / 100 * cpuNumber * coreUsageFactor);
+        int estimatedCores = (int) Math.ceil(Math.min(cpuLoad, 100.0) / 100 * cpuNumber);
         return Math.max(1, Math.min(cpuNumber, estimatedCores));
     }
     private double calculateCpuLoad(long currentTime, long previousTime, long currentUpTime, long previousUpTime) {
