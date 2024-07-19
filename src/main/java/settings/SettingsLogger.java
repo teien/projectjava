@@ -14,91 +14,96 @@ public class SettingsLogger {
     private static final String SETTINGS_FILE = "settings.json";
     private static final String DEFAULT_SETTINGS = """
             {
-                    "Show/Hide": {
-                        "STORAGE": {
-                            "showDisk": true,
-                            "showSSDTitle": true
-                        },
-                        "SYSTEM": {
-                            "showUptime": true,
-                            "showSYSTEMTitle": true
-                        },
-                        "NETWORK": {
-                            "showNetworkIP": true,
-                            "showNetworkUploadMonitor": true,
-                            "showNetworkDownloadTotal": true,
-                            "showNETWORKTitle": true,
-                            "showNetworkDownloadSpeed": true,
-                            "showNetworkUploadSpeed": true,
-                            "showNetworkDownloadMonitor": true,
-                            "showNetworkUploadTotal": true
-                        },
-                        "KERNEL": {"showKernel": true},
-                        "WEATHER": {"showWeather": true},
-                        "DATETIME": {
-                            "showTime": true,
-                            "showTimeTitle": true,
-                            "showDate": true
-                        },
-                        "PROCESS": {
-                            "showProcess": true,
-                            "showProcessTitle": true
-                        },
-                        "CPU": {
-                            "showCPUTitle": true,
-                            "showCpuName": true,
-                            "showCpuUsage": true,
-                            "showCpuTemp": true
-                        },
-                        "GPU": {
-                            "showGpuName": true,
-                            "showGpuUsage": true,
-                            "showGpuTemp": true,
-                            "showGPUTitle": true
-                        },
-                        "RAM": {
-                            "showRamInUse": true,
-                            "showRamFree": true,
-                            "showRamTotal": true,
-                            "showRAMTitle": true
-                        }
-                    },
-                    "PORT": {
-                        "Chat": 49151,
-                        "Remote": 49150,
-                        "Audio": 49149,
-                        "File": 49152
-                    },
-                    "Screen": {
-                        "alwaysOnTop": true,
-                        "width": 232,
-                        "yc": 0,
-                        "xc": 0,
-                        "height": 936
-                    },
-                    "Style": {
-                        "bgColor": 402653183,
-                        "fontType1": "JetBrains Mono NL Medium",
-                        "fontType2": "JetBrains Mono NL ExtraLight",
-                        "fontSize1": 12,
-                        "fontColor2": -16737895,
-                        "fontColor1": -3355444,
-                        "fontSize2": 16,
-                        "opacity": 1
-                    },
-                    "Paths": {"sensorDataFilePath": "C:\\\\\\\\ProgramData\\\\\\\\sensorData.json"},
-                    "ProgressBar": {
-                        "progressBarHeight": 10,
-                        "progressBarWidth": 214,
-                        "progressBarBackgroundColor": 402653183,
-                        "progressBarForegroundColor": -16737895
-                    },
-                    "Disk": {
-                        "diskName": "C,D,F",
-                        "showAllDisk": false
-                    },
-                    "Chart": {"chartWidth": 214}
-                }""";
+                     "Show/Hide": {
+                         "STORAGE": {
+                             "showDisk": true,
+                             "showSSDTitle": true
+                         },
+                         "SYSTEM": {
+                             "showUptime": true,
+                             "showSYSTEMTitle": true
+                         },
+                         "NETWORK": {
+                             "showNetworkIP": true,
+                             "showNetworkUploadMonitor": true,
+                             "showNetworkDownloadTotal": true,
+                             "showNETWORKTitle": true,
+                             "showNetworkDownloadSpeed": true,
+                             "showNetworkUploadSpeed": true,
+                             "showNetworkDownloadMonitor": true,
+                             "showNetworkUploadTotal": true
+                         },
+                         "KERNEL": {"showKernel": true},
+                         "WEATHER": {"showWeather": true},
+                         "DATETIME": {
+                             "showTime": true,
+                             "showTimeTitle": true,
+                             "showDate": true
+                         },
+                         "PROCESS": {
+                             "showProcess": true,
+                             "showProcessTitle": true
+                         },
+                         "CPU": {
+                             "showCPUTitle": true,
+                             "showCpuName": true,
+                             "showCpuUsage": true,
+                             "showCpuTemp": true,
+                             "cpuName": ""
+                 
+                         },
+                         "GPU": {
+                             "showDedicatedGPU": true,
+                             "showIntegratedGPU": false,
+                             "showGpuName": true,
+                             "showGpuUsage": true,
+                             "showGpuTemp": true,
+                             "showGPUTitle": true,
+                             "gpuName": ""
+                         },
+                         "RAM": {
+                             "showRamInUse": true,
+                             "showRamFree": true,
+                             "showRamTotal": true,
+                             "showRAMTitle": true
+                         }
+                     },
+                     "PORT": {
+                         "Chat": 49151,
+                         "Remote": 49150,
+                         "Audio": 49149,
+                         "File": 49152
+                     },
+                     "Screen": {
+                         "alwaysOnTop": true,
+                         "width": 232,
+                         "yc": 0,
+                         "xc": 0,
+                         "height": 958
+                     },
+                     "Style": {
+                         "bgColor": 402653183,
+                         "fontType1": "JetBrains Mono NL Medium",
+                         "fontType2": "JetBrains Mono NL ExtraLight",
+                         "fontSize1": 12,
+                         "fontColor2": -16737895,
+                         "fontColor1": -3355444,
+                         "fontSize2": 17,
+                         "opacity": 1
+                     },
+                     "Paths": {"sensorDataFilePath": "C:\\\\\\\\ProgramData\\\\\\\\sensorData.json"},
+                     "ProgressBar": {
+                         "progressBarHeight": 10,
+                         "progressBarWidth": 214,
+                         "progressBarBackgroundColor": 402653183,
+                         "progressBarForegroundColor": -16737895
+                     },
+                     "Disk": {
+                         "diskName": "C,D,F",
+                         "showAllDisk": true
+                     },
+                     "Chart": {"chartWidth": 214}
+                 }""";
 
     static File getSettingsFile() {
         String jarDir;

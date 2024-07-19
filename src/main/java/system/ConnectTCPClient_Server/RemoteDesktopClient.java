@@ -356,14 +356,13 @@ public class RemoteDesktopClient extends JFrame {
         }
     }
     private void startRemote() throws IOException, InterruptedException {
-
         remoteData();
         frame = new JFrame("Remote Desktop Viewer");
         label = new JLabel();
         frame.setSize(800, 600);
         frame.add(label);
         frame.setVisible(true);
-
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         addMouseListeners(label, dos);
         addKeyListeners(frame, dos);
 
@@ -437,6 +436,9 @@ public class RemoteDesktopClient extends JFrame {
                 disConnections(socket,dis,dos);
                 remoteButton.setText("Remote");
                 isConnected.set(false);
+                receiverWorker.cancel(true);
+                imageWorker.cancel(true);
+                System.gc();
             }
         });
 

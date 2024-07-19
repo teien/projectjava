@@ -33,11 +33,15 @@
             "showCPUTitle": true,
             "showCpuName": true,
             "showCpuUsage": true,
-            "showCpuTemp": true
+            "showCpuTemp": true,
+            "cpuName": ""
         },
         "GPU": {
+            "gpuName": "",
+            "showDedicatedGPU": true,
             "showGpuName": true,
             "showGpuUsage": true,
+            "showIntegratedGPU": false,
             "showGpuTemp": true,
             "showGPUTitle": true
         },
@@ -57,9 +61,9 @@
     "Screen": {
         "alwaysOnTop": true,
         "width": 232,
-        "yc": 0,
+        "yc": -270,
         "xc": 232,
-        "height": 940
+        "height": 958
     },
     "Style": {
         "bgColor": 402653183,
@@ -68,7 +72,7 @@
         "fontSize1": 12,
         "fontColor2": -16737895,
         "fontColor1": -3355444,
-        "fontSize2": 16,
+        "fontSize2": 17,
         "opacity": 1
     },
     "Paths": {"sensorDataFilePath": "C:\\\\ProgramData\\\\sensorData.json"},
@@ -80,7 +84,7 @@
     },
     "Disk": {
         "diskName": "C,D,F",
-        "showAllDisk": false
+        "showAllDisk": true
     },
     "Chart": {"chartWidth": 214}
 }

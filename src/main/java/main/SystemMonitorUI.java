@@ -6,10 +6,7 @@ import com.sun.jna.platform.win32.WinDef;
 import com.sun.jna.platform.win32.WinUser;
 import org.json.JSONObject;
 import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
-import oshi.hardware.GlobalMemory;
-import oshi.hardware.HardwareAbstractionLayer;
-import oshi.hardware.NetworkIF;
+import oshi.hardware.*;
 import oshi.software.os.OperatingSystem;
 import oshi.util.GlobalConfig;
 import settings.SettingUI;
@@ -68,6 +65,7 @@ public class SystemMonitorUI extends JFrame {
     private static OperatingSystem os;
     private static NetworkIF networkIF;
     private static File[] drives;
+    private static String cpuName;
     private  double cpuLoad;
     private long lastDownloadBytes;
     private long lastUploadBytes;
@@ -112,6 +110,7 @@ public class SystemMonitorUI extends JFrame {
     private static CentralProcessor processor;
     private static long[] prevTicks = null ;
     private static long[] ticks;
+    private static String gpuName;
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
         this.showCpu = showCpu;
@@ -138,15 +137,35 @@ public class SystemMonitorUI extends JFrame {
     }
 
     public static void initializeSystemInfo() {
-       
+        settings = SettingsLogger.loadSettings();
         SystemInfo systemInfo = new SystemInfo();
         GlobalConfig.set(GlobalConfig.OSHI_OS_WINDOWS_CPU_UTILITY, true);
         processor = systemInfo.getHardware().getProcessor();
         ticks = processor.getSystemCpuLoadTicks();
         cpuNumber = processor.getLogicalProcessorCount();
-
+        cpuName = processor.getProcessorIdentifier().getName();
+        String loadSettingCpuName = settings.getJSONObject("Show/Hide").getJSONObject("CPU").getString("cpuName");
+        if(!loadSettingCpuName.isEmpty()){
+            SystemMonitorUI.cpuName = loadSettingCpuName;
+        }
         hal = systemInfo.getHardware();
         os = systemInfo.getOperatingSystem();
+        //gpu
+        for (GraphicsCard gpu : hal.getGraphicsCards()) {
+            String gpuName = gpu.getName();
+            boolean isDedicated = isDedicatedGPU(gpuName);
+            if (isDedicated && settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showDedicatedGPU")) {
+                SystemMonitorUI.gpuName = gpuName;
+                break;
+            } else if (!isDedicated && settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showIntegratedGPU")) {
+                SystemMonitorUI.gpuName = gpuName;
+                break;
+            }
+        }
+        String loadSettingGpuName = settings.getJSONObject("Show/Hide").getJSONObject("GPU").getString("gpuName");
+        if(!loadSettingGpuName.isEmpty()){
+            SystemMonitorUI.gpuName = loadSettingGpuName;
+        }
         //network
         List<NetworkIF> networkIFs = hal.getNetworkIFs();
         if (!networkIFs.isEmpty()) {
@@ -176,6 +195,19 @@ public class SystemMonitorUI extends JFrame {
             drives = driveListFiltered.toArray(new File[0]);
         }
     }
+    private static boolean isDedicatedGPU(String gpuName) {
+        String lowerCaseName = gpuName.toLowerCase();
+        if (lowerCaseName.contains("nvidia") ||
+                (lowerCaseName.contains("amd") && !lowerCaseName.contains("radeon vega"))) {
+            return true;
+        } else if (lowerCaseName.contains("intel") ||
+                (lowerCaseName.contains("amd") && lowerCaseName.contains("radeon vega"))) {
+            return false;
+        } else {
+
+            return false;
+        }
+    }
     private void startUpdateTimer() {
         // Update weather if first time can not be done because of network issues
         if ((showNetwork) && (networkIPLabel.getText().equals(" IP: --"))) {
@@ -195,6 +227,8 @@ public class SystemMonitorUI extends JFrame {
         systemInfoExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
             initializeSystemInfo();
             updateSystemInfo();
+            updateLocationScreen();
+
         }), 0, 1, TimeUnit.SECONDS);
         ProcessMonitor pm = new ProcessMonitor(os, cpuNumber, processListLabel);
 
@@ -347,7 +381,6 @@ public class SystemMonitorUI extends JFrame {
         setBackgroundColorUpdate();
         updateLocationScreen();
         initializeSystemInfo();
-
     }
 
 
@@ -439,32 +472,24 @@ public class SystemMonitorUI extends JFrame {
            String osName = System.getProperty("os.name").toLowerCase();
            String kernelInfo = " Computer: " + computerName + " (" + osName + ")";
            String uptimeInfo = " Uptime: " + formatUptime(os.getSystemUptime());
-
            ServiceManager.HwInfo hwInfo = ServiceManager.HwInfo.getHwInfo();
-
-
-
            String cpuUsageInfo = null;
            String cpuTemperatureInfo = null;
-           String cpuNameInfo = null;
-
            if (showCpu) {
-
                cpuUsageInfo = String.format(" CPU Usage: %15.1f %%", cpuLoad);
                Double cpuTemperature = hwInfo.cpuTemperature();
                cpuTemperatureInfo = String.format(" CPU Temperature: %9.1f°C", cpuTemperature);
-               cpuNameInfo = " " + hwInfo.cpuName();
            }
 
            String gpuTemperatureInfo = null;
            String gpuUsageInfo = null;
-           String gpuNameInfo = null;
+
            if (showGpu) {
                Double gpuTemperature = hwInfo.gpuTemperature();
                Double gpuUsage = hwInfo.gpuUsage();
                gpuTemperatureInfo = String.format(" GPU Temperature: %9.1f°C", gpuTemperature);
                gpuUsageInfo = String.format(" GPU Usage: %15.1f %%", gpuUsage);
-               gpuNameInfo = " " + hwInfo.gpuName();
+
            }
 
            GlobalMemory memory = hal.getMemory();
@@ -482,12 +507,13 @@ public class SystemMonitorUI extends JFrame {
 
            String diskInfo = null;
            String[] driveInfos = new String[100];
-           long[] driveTotalSpace = new long[drives.length];
-           long[] driveUsageSpace = new long[drives.length];
+           long[] driveTotalSpace = new long[100];
+           long[] driveUsageSpace = new long[100];
            if (showSsd) {
                if (drives.length > 0) {
-                   driveInfos = new String[drives.length];
                    for (int i = 0; i < drives.length; i++) {
+                       driveTotalSpace[i] = 0;
+                       driveUsageSpace[i] = 0;
                        if (drives[i].getTotalSpace() > 0) {
                            File drive = drives[i];
                            String driveName = drive.toString().replace("\\", "");
@@ -549,12 +575,12 @@ public class SystemMonitorUI extends JFrame {
                networkUploadTotalInfo = String.format(" Upload Total:  %8.2f  GiB", uploadBytes / 1e9);
            }
 
+           String finalCpuName = cpuName;
            String finalCpuUsageInfo = cpuUsageInfo;
            String finalCpuTemperatureInfo = cpuTemperatureInfo;
-           String finalCpuNameInfo = cpuNameInfo;
            String finalGpuTemperatureInfo = gpuTemperatureInfo;
            String finalGpuUsageInfo = gpuUsageInfo;
-           String finalGpuNameInfo = gpuNameInfo;
+           String finalGpuName = gpuName;
            String finalRamTotalInfo = ramTotalInfo;
            String finalRamInUseInfo = ramInUseInfo;
            String finalRamFreeInfo = ramFreeInfo;
@@ -564,8 +590,8 @@ public class SystemMonitorUI extends JFrame {
            String finalNetworkDownloadTotalInfo = networkDownloadTotalInfo;
            String finalNetworkUploadTotalInfo = networkUploadTotalInfo;
 
-           String[] finalDiskInfo = new String[100];
-           System.arraycopy(driveInfos, 0, finalDiskInfo, 0, drives.length);
+           String[] finalDiskInfo = new String[driveInfos.length];
+           System.arraycopy(driveInfos, 0, finalDiskInfo, 0, 100);
 
            SwingUtilities.invokeLater(() -> {
                kernelLabel.setText(kernelInfo);
@@ -574,13 +600,14 @@ public class SystemMonitorUI extends JFrame {
                if (showCpu) {
                    cpuUsageLabel.setText(finalCpuUsageInfo);
                    cpuTemperatureLabel.setText(finalCpuTemperatureInfo);
-                   cpuNameLabel.setText(finalCpuNameInfo);
+                   cpuNameLabel.setText(" "+finalCpuName);
+
                }
 
                if (showGpu) {
                    gpuTemperatureLabel.setText(finalGpuTemperatureInfo);
                    gpuUsageLabel.setText(finalGpuUsageInfo);
-                   gpuNameLabel.setText(finalGpuNameInfo);
+                   gpuNameLabel.setText(" " + finalGpuName);
                }
 
                if (showRam) {
@@ -590,7 +617,7 @@ public class SystemMonitorUI extends JFrame {
                }
                if (showSsd) {
                      for (int i = 0; i < drives.length+20; i++) {
-                         if (diskLabel[i] != null && finalDiskInfo[i] != null) {
+                         if (diskLabel[i] != null) {
                              diskLabel[i].setText(finalDiskInfo[i]);
                              if (driveTotalSpace[i] > 0) {
                                  updateDiskProgressBar(i, driveUsageSpace[i], driveTotalSpace[i]);

@@ -173,17 +173,23 @@ public class SystemTrayApp {
         remoteServer.addActionListener(e -> new Thread(() -> {
             try {
                  new RemoteDesktopServer().createAndShowGUI();
+
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         }).start());
         remoteClient.addActionListener(e -> new Thread(() -> {
             try {
-                new RemoteDesktopClient().setVisible(true);
+                RemoteDesktopClient client = new RemoteDesktopClient();
+                client.setVisible(true);
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         }).start());
+
+
+
+
         restartItem.addActionListener(e -> {
             SystemMonitorUI.restart();
         });
