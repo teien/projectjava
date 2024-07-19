@@ -106,11 +106,6 @@
             Used to access the contents of the file.
             </summary>
         </member>
-        <member name="P:Microsoft.Extensions.Configuration.FileConfigurationSource.OwnsFileProvider">
-            <summary>
-            Set to true when <see cref="P:Microsoft.Extensions.Configuration.FileConfigurationSource.FileProvider"/> was not provided by user and can be safely disposed.
-            </summary>
-        </member>
         <member name="P:Microsoft.Extensions.Configuration.FileConfigurationSource.Path">
             <summary>
             The path to the file.

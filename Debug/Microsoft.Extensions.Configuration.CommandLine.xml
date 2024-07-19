@@ -44,7 +44,7 @@
                  {
                     public class Program
                     {
-                        public static void main(string[] args)
+                        public static void Main(string[] args)
                         {
                             var builder = new ConfigurationBuilder();
                             builder.AddCommandLine(args);
@@ -117,7 +117,7 @@
                  {
                     public class Program
                     {
-                        public static void main(string[] args)
+                        public static void Main(string[] args)
                         {
                             var switchMappings = new Dictionary&lt;string, string&gt;()
                             {

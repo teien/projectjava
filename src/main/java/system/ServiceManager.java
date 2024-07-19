@@ -6,6 +6,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import settings.SettingsLogger;
 
+import javax.swing.*;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -26,7 +27,14 @@ public class ServiceManager {
                          String gpuName) {
 
         public static HwInfo getHwInfo() {
-            startAndEnsureServiceRunning();
+            new SwingWorker<>() {
+                @Override
+                protected HwInfo doInBackground() {
+                    startAndEnsureServiceRunning();
+                    return null;
+                }
+            }.execute();
+
             JSONArray sensorDataArray = readSensorData();
 
             if (sensorDataArray == null) {
@@ -83,12 +91,6 @@ public class ServiceManager {
     private static void startAndEnsureServiceRunning() {
         if (!isServiceRunning()) {
             startService();
-            try {
-                Thread.sleep(5000); // Wait for the service to start
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                System.out.println("Interrupted while waiting for service to start.");
-            }
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> executeCommand("sc stop " + SERVICE_NAME)));
