@@ -24,13 +24,11 @@ public class ProcessMonitor {
     }
 
     public void printProcesses() {
-        GlobalConfig.set(GlobalConfig.OSHI_OS_WINDOWS_CPU_UTILITY, true);
-        List<OSProcess> processes = os.getProcesses(OperatingSystem.ProcessFiltering.ALL_PROCESSES, OperatingSystem.ProcessSorting.CPU_DESC, 5);
+        List<OSProcess> processes = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 5);
+        // bo qua process idle
+        processes.removeIf(this::isSystemIdleProcess);
         int labelIndex = 0;
         for (OSProcess process : processes) {
-            if (isSystemIdleProcess(process)) {
-                continue;
-            }
             updateProcessInfo(process, labelIndex);
             labelIndex++;
             if (labelIndex >= processListLabel.length) {
@@ -66,7 +64,7 @@ public class ProcessMonitor {
         previousTimes.put(processId, currentTime);
         previousUpTimes.put(processId, currentUpTime);
 
-        int usedCores = estimateUsedCores(cpuLoad);
+       // int usedCores = estimateUsedCores(cpuLoad);
 
 
         processName = formatProcessName(processName);

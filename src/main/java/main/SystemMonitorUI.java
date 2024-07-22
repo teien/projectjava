@@ -107,10 +107,11 @@ public class SystemMonitorUI extends JFrame {
 
     private final JProgressBar[] diskProgressBars = new JProgressBar[100];
     private final JPanel[] progressBarPanel = new JPanel[100];
+
     private static CentralProcessor processor;
-    private static long[] prevTicks = null ;
     private static long[] ticks;
     private static String gpuName;
+    private JProgressBar ramProgressBars;
 
     public SystemMonitorUI(boolean showCpu, boolean showRam, boolean showSsd, boolean showNetwork, boolean showWeather, boolean showGpu, boolean showProcess) {
         this.showCpu = showCpu;
@@ -369,7 +370,7 @@ public class SystemMonitorUI extends JFrame {
 
     void updateSetting() {
         settings = SettingsLogger.loadSettings();
-        setFontUpdate(processListLabel[0], processListLabel[1], processListLabel[2], processListLabel[3],processLabel, timeLabel,dateLabel, weatherLabel, kernelLabel, uptimeLabel, cpuUsageLabel, cpuTemperatureLabel, cpuNameLabel, ramTotalLabel, ramInUseLabel, ramFreeLabel, networkIPLabel, networkDownloadSpeedLabel, networkUploadSpeedLabel, networkDownloadTotalLabel, networkUploadTotalLabel, gpuTemperatureLabel, gpuUsageLabel, gpuNameLabel);
+        setFontUpdate(processListLabel[0], processListLabel[1], processListLabel[2], processListLabel[3],processLabel, timeLabel,dateLabel, weatherLabel, kernelLabel, uptimeLabel, cpuUsageLabel, cpuTemperatureLabel, cpuNameLabel, ramTotalLabel, ramInUseLabel, networkIPLabel, networkDownloadSpeedLabel, networkUploadSpeedLabel, networkDownloadTotalLabel, networkUploadTotalLabel, gpuTemperatureLabel, gpuUsageLabel, gpuNameLabel);
         for (int i = 0; i < drives.length; i++) {
             if (diskLabel[i] != null) {
                 setFontUpdate(diskLabel[i]);
@@ -494,18 +495,19 @@ public class SystemMonitorUI extends JFrame {
                }
 
            }
-
-           GlobalMemory memory = hal.getMemory();
            String ramTotalInfo = null;
-           String ramInUseInfo = null;
-           String ramFreeInfo = null;
+           long totalMemory;
+           long availableMemory = 0;
+           long usedMemory;
+           GlobalMemory memory = hal.getMemory();
            if (showRam) {
-               long totalMemory = memory.getTotal();
-               long availableMemory = memory.getAvailable();
-               long usedMemory = totalMemory - availableMemory;
-               ramTotalInfo = String.format(" RAM Total:  %12.2f GiB", totalMemory / 1e9);
-               ramInUseInfo = String.format(" In Use:  %6.1f%%", (double) usedMemory / totalMemory * 100) + String.format("%8.2f GiB", usedMemory / 1e9);
-               ramFreeInfo = String.format(" Free:  %8.1f%%", (double) availableMemory / totalMemory * 100) + String.format("%8.2f GiB", availableMemory / 1e9);
+               totalMemory = memory.getTotal();
+               availableMemory = memory.getAvailable();
+               usedMemory = totalMemory - availableMemory;
+               ramTotalInfo = String.format(" RAM:  %11.2f GiB/%1.0f GiB",usedMemory/1e9, totalMemory / 1e9);
+           } else {
+               totalMemory = 0;
+               usedMemory = 0;
            }
 
            String diskInfo = null;
@@ -524,12 +526,12 @@ public class SystemMonitorUI extends JFrame {
                            long usableSpace = drive.getUsableSpace();
                            long usedSpace = totalSpace - usableSpace;
                            if (totalSpace < 1e12) {
-                               diskInfo = String.format(" %s %12.2f GB/%6.2f GB",
+                               diskInfo = String.format(" %s %13.2f GiB/%1.0f GiB",
                                        driveName,
                                        usableSpace / 1e9,
                                        totalSpace / 1e9);
                            } else {
-                               diskInfo = String.format(" %s %12.2f TB/%6.2f TB",
+                               diskInfo = String.format(" %s %13.2f TB/%1.0f TB",
                                        driveName,
                                        usableSpace / 1e12,
                                        totalSpace / 1e12);
@@ -585,8 +587,6 @@ public class SystemMonitorUI extends JFrame {
            String finalGpuUsageInfo = gpuUsageInfo;
            String finalGpuName = gpuName;
            String finalRamTotalInfo = ramTotalInfo;
-           String finalRamInUseInfo = ramInUseInfo;
-           String finalRamFreeInfo = ramFreeInfo;
            String finalNetworkIPInfo = networkIPInfo;
            String finalNetworkDownloadSpeedInfo = networkDownloadSpeedInfo;
            String finalNetworkUploadSpeedInfo = networkUploadSpeedInfo;
@@ -615,8 +615,7 @@ public class SystemMonitorUI extends JFrame {
 
                if (showRam) {
                    ramTotalLabel.setText(finalRamTotalInfo);
-                   ramInUseLabel.setText(finalRamInUseInfo);
-                   ramFreeLabel.setText(finalRamFreeInfo);
+                   updateRamProgressBar( usedMemory,  totalMemory);
                }
                if (showSsd) {
                      for (int i = 0; i < drives.length+20; i++) {
@@ -667,7 +666,7 @@ public class SystemMonitorUI extends JFrame {
    }
 
     private void getCpuLoad()  {
-        prevTicks = ticks;
+        long[] prevTicks = ticks;
         cpuLoad = processor.getSystemCpuLoadBetweenTicks(prevTicks)*100;
         if (cpuLoad < 0) {
             cpuLoad = 0;
@@ -684,6 +683,15 @@ public class SystemMonitorUI extends JFrame {
         SwingUtilities.invokeLater(() -> {
             diskProgressBars[index].setValue( percent);
             diskProgressBars[index].setString(percent + "%");
+            repaint();
+        });
+    }
+    private void updateRamProgressBar(long usedSpace, long totalSpace) {
+        int percent = (int) (usedSpace * 100 / totalSpace);
+        SwingUtilities.invokeLater(() -> {
+            ramProgressBars.setValue(percent);
+            ramProgressBars.setString(percent + "%");
+            repaint();
         });
     }
 
@@ -754,7 +762,7 @@ public class SystemMonitorUI extends JFrame {
 
         ramTotalLabel = createLabel(" RAM Total: 0 GiB");
         ramInUseLabel = createLabel(" In Use: 0 GiB");
-        ramFreeLabel = createLabel(" Free: 0 GiB");
+        ramProgressBars = createProgressBar();
 
         int progressBarHeight = settings.getJSONObject("ProgressBar").optInt("progressBarHeight", 12);
         for (int i = 0; i < drives.length; i++) {
@@ -815,9 +823,11 @@ public class SystemMonitorUI extends JFrame {
             }
             if (settings.getJSONObject("Show/Hide").getJSONObject("CPU").getBoolean("showCpuUsage")) {
                 panel.add(cpuUsageLabel);
+
             }
             if (settings.getJSONObject("Show/Hide").getJSONObject("CPU").getBoolean("showCpuTemp")) {
                 panel.add(cpuTemperatureLabel);
+
             }
         }
         if (showProcess) {
@@ -843,9 +853,11 @@ public class SystemMonitorUI extends JFrame {
             }
             if (settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showGpuUsage")) {
                 panel.add(gpuUsageLabel);
+
             }
             if (settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showGpuTemp")) {
                 panel.add(gpuTemperatureLabel);
+
             }
         }
         if (showRam) {
@@ -855,12 +867,18 @@ public class SystemMonitorUI extends JFrame {
             if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRamTotal")) {
                 panel.add(ramTotalLabel);
             }
-            if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRamInUse")) {
-                panel.add(ramInUseLabel);
+            if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRamProgressBar")) {
+                JPanel ramProgressBarsPanel = new JPanel();
+                ramProgressBarsPanel.setLayout(new GridLayout(0, 1));
+                ramProgressBarsPanel.setPreferredSize(new Dimension(230, 10));
+                ramProgressBarsPanel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
+                ramProgressBarsPanel.setOpaque(true);
+                ramProgressBarsPanel.setBackground(new Color(0, 0, 0, 0));
+
+                ramProgressBarsPanel.add(ramProgressBars);
+                panel.add(ramProgressBarsPanel);
             }
-            if (settings.getJSONObject("Show/Hide").getJSONObject("RAM").getBoolean("showRamFree")) {
-                panel.add(ramFreeLabel);
-            }
+
         }
         if (showSsd) {
             if (settings.getJSONObject("Show/Hide").getJSONObject("STORAGE").getBoolean("showSSDTitle")) {
@@ -922,7 +940,7 @@ public class SystemMonitorUI extends JFrame {
         progressBarPanel.setLayout(new GridLayout(0, 1));
         progressBarPanel.setPreferredSize(new Dimension(230, height));
         progressBar.setPreferredSize(new Dimension(230, height));
-        progressBarPanel.setBorder(BorderFactory.createEmptyBorder(1, 6, 1, 6));
+        progressBarPanel.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
         progressBarPanel.setOpaque(true);
         progressBarPanel.setBackground(new Color(0, 0, 0, 0));
         progressBarPanel.add(progressBar);
@@ -930,15 +948,64 @@ public class SystemMonitorUI extends JFrame {
     }
 
     private JProgressBar createProgressBar() {
-        JProgressBar progressBar = new JProgressBar(0, 100);
+        JProgressBar progressBar = new JProgressBar(0, 100) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g;
+                int width = getWidth();
+                int height = getHeight();
+
+                // Vẽ nền thanh tiến trình
+                g2d.setColor(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarBackgroundColor")));
+                g2d.fillRect(0, 0, width, height);
+
+                // Vẽ thanh tiến trình
+                int progressWidth = (int) (((double) getValue() / getMaximum()) * width);
+                g2d.setColor(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarForegroundColor")));
+                g2d.fillRect(0, 0, progressWidth, height);
+
+                // Vẽ bóng đổ nhẹ
+                g2d.setColor(new Color(0, 0, 0, 50)); // Bóng đổ nhẹ
+                g2d.fillRect(2, 2, progressWidth - 4, height - 4);
+
+                // Vẽ phần trăm
+                if (isStringPainted()) {
+                    String progressText = getString();
+                    FontMetrics fontMetrics = g2d.getFontMetrics();
+                    int stringWidth = fontMetrics.stringWidth(progressText);
+                    int stringHeight = fontMetrics.getAscent();
+
+                    // Tính toán vị trí để vẽ văn bản
+                    int x = (width - stringWidth) / 2;
+                    int y = (height + stringHeight) / 2 - 2;
+
+                    // Đặt hiệu ứng đổ bóng cho văn bản
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    // Vẽ viền văn bản
+                    g2d.setColor(Color.BLACK); // Màu viền
+                    for (int i = -1; i <= 1; i++) {
+                        for (int j = -1; j <= 1; j++) {
+                            if (i != 0 || j != 0) {
+                                g2d.drawString(progressText, x + i, y + j);
+                            }
+                        }
+                    }
+
+                    // Vẽ văn bản chính
+                    g2d.setColor(Color.WHITE); // Màu văn bản chính
+                    g2d.drawString(progressText, x, y);
+                }
+            }
+
+        };
+        progressBar.setBorderPainted(false);
         progressBar.setOrientation(SwingConstants.HORIZONTAL);
         progressBar.setStringPainted(true);
         progressBar.setValue(0);
         progressBar.setString("0%");
-        progressBar.setFont(new Font("Monospace", Font.ITALIC, 10));
-        progressBar.setBorderPainted(false);
-        progressBar.setForeground(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarForegroundColor")));
-        progressBar.setBackground(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarBackgroundColor"), true));
+        progressBar.setFont(new Font("JetBrains Mono NL ExtraLight", Font.BOLD, 9));
+
         return progressBar;
     }
     private String formatUptime(long seconds) {

@@ -38,16 +38,16 @@
         },
         "GPU": {
             "gpuName": "",
-            "showDedicatedGPU": false,
+            "showDedicatedGPU": true,
             "showGpuName": true,
             "showGpuUsage": true,
-            "showIntegratedGPU": true,
+            "showIntegratedGPU": false,
             "showGpuTemp": true,
             "showGPUTitle": true
         },
         "RAM": {
             "showRamInUse": true,
-            "showRamFree": true,
+            "showRamProgressBar": true,
             "showRamTotal": true,
             "showRAMTitle": true
         }
@@ -59,11 +59,11 @@
         "File": 49152
     },
     "Screen": {
-        "alwaysOnTop": false,
+        "alwaysOnTop": true,
         "width": 232,
-        "yc": -270,
+        "yc": 0,
         "xc": 232,
-        "height": 976
+        "height": 970
     },
     "Style": {
         "bgColor": 402653183,
@@ -72,7 +72,7 @@
         "fontSize1": 12,
         "fontColor2": -16737895,
         "fontColor1": -3355444,
-        "fontSize2": 20,
+        "fontSize2": 17,
         "opacity": 1
     },
     "Paths": {"sensorDataFilePath": "C:\\\\ProgramData\\\\sensorData.json"},

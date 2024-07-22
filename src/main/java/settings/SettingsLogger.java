@@ -62,8 +62,7 @@ public class SettingsLogger {
                              "gpuName": ""
                          },
                          "RAM": {
-                             "showRamInUse": true,
-                             "showRamFree": true,
+                             "showRamProgressBar": true,
                              "showRamTotal": true,
                              "showRAMTitle": true
                          }
