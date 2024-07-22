@@ -3,9 +3,10 @@ package system;
 import system.ConnectTCPClient_Server.RemoteDesktopClient;
 import system.ConnectTCPClient_Server.RemoteDesktopServer;
 import settings.SettingsPanel;
-import Main.SystemMonitorUI;
+import main.SystemMonitorUI;
 
 import javax.swing.*;
+import javax.swing.border.LineBorder;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 import java.awt.*;
@@ -19,7 +20,7 @@ public class SystemTrayApp {
 
         public SettingsDialog(JFrame parent) {
             super(parent, "Settings", true);
-            setSize(800, 450);
+            setSize(730, 350);
             setLocationRelativeTo(parent);
             setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
@@ -110,22 +111,17 @@ public class SystemTrayApp {
         JPopupMenu menu = new JPopupMenu();
 
         JMenuItem settingsItem = new JMenuItem("Settings");
-        settingsItem.setFont(new Font("Arial", Font.PLAIN, 12));
-
-        JMenu refreshMenu = new JMenu("Refresh");
+        JMenuItem refreshMenu = new JMenuItem("Refresh");
         JMenu remoteMenu = new JMenu("Remote");
-        refreshMenu.setFont(new Font("Arial", Font.PLAIN, 12));
-        remoteMenu.setFont(new Font("Arial", Font.PLAIN, 12));
         JMenuItem updateWeather = new JMenuItem("Weather");
-        updateWeather.setFont(new Font("Arial", Font.PLAIN, 11));
         JMenuItem updateNetwork = new JMenuItem("Network");
-        updateNetwork.setFont(new Font("Arial", Font.PLAIN, 11));
         JMenuItem remoteServer = new JMenuItem("Server");
-        remoteServer.setFont(new Font("Arial", Font.PLAIN, 11));
         JMenuItem remoteClient = new JMenuItem("Client");
-        remoteClient.setFont(new Font("Arial", Font.PLAIN, 11));
+        JMenuItem restartItem = new JMenuItem("Restart");
         JMenuItem exitItem = new JMenuItem("Exit");
-        exitItem.setFont(new Font("Arial", Font.PLAIN, 12));
+        menu.setBorder(new LineBorder(Color.DARK_GRAY, 1));
+        setFont(settingsItem, updateWeather, updateNetwork, remoteServer, remoteClient, restartItem, exitItem,refreshMenu,remoteMenu);
+
 
         menu.add(settingsItem);
         menu.addSeparator();
@@ -133,38 +129,70 @@ public class SystemTrayApp {
         menu.addSeparator();
         menu.add(remoteMenu);
         menu.addSeparator();
+        menu.add(restartItem);
+        menu.addSeparator();
         menu.add(exitItem);
 
-        refreshMenu.add(updateWeather);
-        refreshMenu.add(updateNetwork);
+
+       /* refreshMenu.add(updateWeather);
+        refreshMenu.addSeparator();
+        refreshMenu.add(updateNetwork);*/
 
         remoteMenu.add(remoteServer);
+        remoteMenu.addSeparator();
         remoteMenu.add(remoteClient);
+
 
         settingsItem.addActionListener(e -> {
             SettingsDialog settingsDialog = new SettingsDialog(frame);
             settingsDialog.setVisible(true);
         });
 
-        updateWeather.addActionListener(e -> {
-            SystemMonitorUI.updateWeatherInfo();
-        });
-        updateNetwork.addActionListener(e -> SystemMonitorUI.initializeSystemInfo());
+        /*updateWeather.addActionListener(e -> new Thread(() -> {
+            try {
+                SystemMonitorUI.updateWeatherInfo();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());*/
+        /*updateNetwork.addActionListener(e -> new Thread( () -> {
+            try {
+                SystemMonitorUI.initializeSystemInfo();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());*/
+        refreshMenu.addActionListener(e -> new Thread(() -> {
+            try {
+                SystemMonitorUI.initializeSystemInfo();
+                SystemMonitorUI.updateWeatherInfo();
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
+        }).start());
         remoteServer.addActionListener(e -> new Thread(() -> {
             try {
                  new RemoteDesktopServer().createAndShowGUI();
+
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         }).start());
         remoteClient.addActionListener(e -> new Thread(() -> {
             try {
-                new RemoteDesktopClient().setVisible(true);
+                RemoteDesktopClient client = new RemoteDesktopClient();
+                client.setVisible(true);
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
         }).start());
 
+
+
+
+        restartItem.addActionListener(e -> {
+            SystemMonitorUI.restart();
+        });
         exitItem.addActionListener(e -> System.exit(0));
 
         menu.addPopupMenuListener(new PopupMenuListener() {
@@ -186,14 +214,28 @@ public class SystemTrayApp {
 
         return menu;
     }
-
+    private void setFont(JMenuItem ...items) {
+        for (JMenuItem item : items) {
+            item.setFont(new Font("JetBrains Mono Medium", Font.PLAIN, 10));
+        }
+    }
     private void createInvisibleFrame() {
         frame = new JFrame();
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // Change to HIDE_ON_CLOSE
         frame.setUndecorated(true);
         frame.setSize(0, 0);
         frame.setLocationRelativeTo(null);
         frame.setType(Window.Type.UTILITY);
+
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+                popupMenu.setVisible(false);
+            }
+        });
         frame.setVisible(true);
+    }
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(SystemTrayApp::new);
     }
 }

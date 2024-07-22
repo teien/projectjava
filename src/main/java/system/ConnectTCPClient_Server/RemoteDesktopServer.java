@@ -60,6 +60,7 @@ public class RemoteDesktopServer {
             @Override
             public void windowClosing(WindowEvent e) {
                 stopServer();
+                System.gc();
             }
         });
 
@@ -368,6 +369,7 @@ public class RemoteDesktopServer {
                 }
             }
             audioClients.clear();
+
         }
     }
 
