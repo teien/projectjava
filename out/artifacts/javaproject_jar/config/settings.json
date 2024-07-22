@@ -38,10 +38,10 @@
         },
         "GPU": {
             "gpuName": "",
-            "showDedicatedGPU": true,
+            "showDedicatedGPU": false,
             "showGpuName": true,
             "showGpuUsage": true,
-            "showIntegratedGPU": false,
+            "showIntegratedGPU": true,
             "showGpuTemp": true,
             "showGPUTitle": true
         },

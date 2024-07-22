@@ -20,7 +20,7 @@ public class ServiceManager {
     private static final String GPU_CORE = "GPU Core";
     private static final String iGPU ="D3D 3D";
     private static final String TEMPERATURE = "Temperature";
-    private static final String USAGE = "Usage";
+    private static final String USAGE = "Load";
 
     private static JSONArray lastSensorDataArray = null;
 
@@ -77,13 +77,12 @@ public class ServiceManager {
                         } else if (GPU_CORE.equals(sensorName)) {
                             gpuTemp = value;
                             gpuName = hardwareName;
+
                         }
                     } else if (USAGE.equals(dataType)) {
-                        if ("CPU".equals(hardwareType)) {
-                            cpuUsage = value;
-                        } else if ("GPU".equals(hardwareType)) {
+                         if ("GPU Core".equals(sensorName)) {
                             gpuUsage = value;
-                        } else if ("iGPU".equals(hardwareType)) {
+                        } else if (iGPU.equals(sensorName)) {
                             iGpuUsage = value;
                         }
                     }

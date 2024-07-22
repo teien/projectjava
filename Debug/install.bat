@@ -1,1 +1,1 @@
-sc create HardwareMonitorService binPath= "D:\Java\projectjava\Debug\ConsoleApp2.exe"
+sc create HardwareMonitorService binPath= "D:\Java\projectjava\Debug\HwSys.exe"
