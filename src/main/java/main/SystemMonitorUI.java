@@ -485,10 +485,13 @@ public class SystemMonitorUI extends JFrame {
            String gpuUsageInfo = null;
 
            if (showGpu) {
-               Double gpuTemperature = hwInfo.gpuTemperature();
-               Double gpuUsage = hwInfo.gpuUsage();
-               gpuTemperatureInfo = String.format(" GPU Temperature: %9.1f°C", gpuTemperature);
-               gpuUsageInfo = String.format(" GPU Usage: %15.1f %%", gpuUsage);
+               if(settings.getJSONObject("Show/Hide").getJSONObject("GPU").getBoolean("showDedicatedGPU")){
+                   gpuUsageInfo = String.format(" GPU Usage: %15.1f %%", hwInfo.gpuUsage());
+                   gpuTemperatureInfo = String.format(" GPU Temperature: %9.1f°C", hwInfo.gpuTemperature());
+               } else {
+                   gpuUsageInfo = String.format(" iGPU Usage: %15.1f %%", hwInfo.iGpuUsage());
+                   gpuTemperatureInfo = String.format(" iGPU Temperature: %9.1f°C", hwInfo.cpuTemperature());
+               }
 
            }
 

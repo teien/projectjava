@@ -18,13 +18,16 @@ public class ServiceManager {
     private static final String SERVICE_NAME = "HardwareMonitorService";
     private static final String CPU_PACKAGE = "CPU Package";
     private static final String GPU_CORE = "GPU Core";
+    private static final String iGPU ="D3D 3D";
     private static final String TEMPERATURE = "Temperature";
     private static final String USAGE = "Usage";
 
     private static JSONArray lastSensorDataArray = null;
 
-    public record HwInfo(Double cpuTemperature, Double gpuTemperature, Double gpuUsage, Double cpuUsage, String cpuName,
+    public record HwInfo(Double cpuTemperature, Double gpuTemperature, Double gpuUsage, Double cpuUsage, Double iGpuUsage , String cpuName,
                          String gpuName) {
+
+
 
         public static HwInfo getHwInfo() {
             new SwingWorker<>() {
@@ -44,7 +47,7 @@ public class ServiceManager {
             }
 
             if (sensorDataArray == null) {
-                return new HwInfo(0.0, 0.0, 0.0, 0.0, "", "");
+                return new HwInfo(0.0, 0.0, 0.0, 0.0, 0.0, "", "" );
             }
 
             double cpuTemp = 0.0;
@@ -53,6 +56,7 @@ public class ServiceManager {
             double cpuUsage = 0.0;
             String cpuName = "";
             String gpuName = "";
+            double iGpuUsage = 0.0;
 
             for (Object sensorDataObj : sensorDataArray) {
                 JSONObject sensorData = (JSONObject) sensorDataObj;
@@ -79,12 +83,14 @@ public class ServiceManager {
                             cpuUsage = value;
                         } else if ("GPU".equals(hardwareType)) {
                             gpuUsage = value;
+                        } else if ("iGPU".equals(hardwareType)) {
+                            iGpuUsage = value;
                         }
                     }
                 }
             }
 
-            return new HwInfo(cpuTemp, gpuTemp, gpuUsage, cpuUsage, cpuName, gpuName);
+            return new HwInfo(cpuTemp, gpuTemp, gpuUsage, cpuUsage,iGpuUsage, gpuName,  cpuName);
         }
     }
 

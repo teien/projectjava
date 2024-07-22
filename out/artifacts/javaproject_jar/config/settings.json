@@ -59,11 +59,11 @@
         "File": 49152
     },
     "Screen": {
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "width": 232,
         "yc": -270,
         "xc": 232,
-        "height": 958
+        "height": 976
     },
     "Style": {
         "bgColor": 402653183,
@@ -72,7 +72,7 @@
         "fontSize1": 12,
         "fontColor2": -16737895,
         "fontColor1": -3355444,
-        "fontSize2": 17,
+        "fontSize2": 20,
         "opacity": 1
     },
     "Paths": {"sensorDataFilePath": "C:\\\\ProgramData\\\\sensorData.json"},
