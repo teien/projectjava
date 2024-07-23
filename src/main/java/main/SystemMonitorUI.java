@@ -497,8 +497,8 @@ public class SystemMonitorUI extends JFrame {
                    gpuUsageInfo = String.format(" GPU Usage: %15.1f %%", hwInfo.gpuUsage());
                    gpuTemperatureInfo = String.format(" GPU Temperature: %9.1f°C", hwInfo.gpuTemperature());
                } else {
-                   gpuUsageInfo = String.format(" iGPU Usage: %15.1f %%", hwInfo.iGpuUsage());
-                   gpuTemperatureInfo = String.format(" iGPU Temperature: %9.1f°C", hwInfo.cpuTemperature());
+                   gpuUsageInfo = String.format(" iGPU Usage: %14.1f %%", hwInfo.iGpuUsage());
+                   gpuTemperatureInfo = String.format(" iGPU Temperature: %8.1f°C", hwInfo.cpuTemperature());
                }
 
            }
@@ -511,7 +511,7 @@ public class SystemMonitorUI extends JFrame {
                totalMemory = memory.getTotal();
                availableMemory = memory.getAvailable();
                usedMemory = totalMemory - availableMemory;
-               ramTotalInfo = String.format(" RAM:  %11.2f GiB/%1.0f GiB",usedMemory/1e9, totalMemory / 1e9);
+               ramTotalInfo = String.format(" RAM:  %11.2f GiB/%.0f GiB",usedMemory/1e9, totalMemory / 1e9);
            } else {
                totalMemory = 0;
                usedMemory = 0;
@@ -533,12 +533,12 @@ public class SystemMonitorUI extends JFrame {
                            long usableSpace = drive.getUsableSpace();
                            long usedSpace = totalSpace - usableSpace;
                            if (totalSpace < 1e12) {
-                               diskInfo = String.format(" %s %13.2f GiB/%1.0f GiB",
+                               diskInfo = String.format(" %s %13.2f GiB/%3.0f GiB",
                                        driveName,
-                                       usableSpace / 1e9,
+                                       usedSpace/ 1e9,
                                        totalSpace / 1e9);
                            } else {
-                               diskInfo = String.format(" %s %13.2f TB/%1.0f TB",
+                               diskInfo = String.format(" %s %16.2f TB/%.0f TB",
                                        driveName,
                                        usableSpace / 1e12,
                                        totalSpace / 1e12);

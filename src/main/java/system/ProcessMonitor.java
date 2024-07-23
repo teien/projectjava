@@ -18,11 +18,9 @@ public class ProcessMonitor {
     private final OperatingSystem os;
     private final Map<Integer, Long> previousTimes = new java.util.HashMap<>();
     private final Map<Integer, Long> previousUpTimes = new java.util.HashMap<>();
-    private final int cpuNumber;
     private final JLabel[] processListLabel;
     public ProcessMonitor(OperatingSystem os, int cpuNumber, JLabel[] processListLabel) {
         this.os = os;
-        this.cpuNumber = cpuNumber;
         this.processListLabel = processListLabel;
 
     }
@@ -68,9 +66,10 @@ public class ProcessMonitor {
     private double calculateCpuLoad(long currentTime, long previousTime, long currentUpTime, long previousUpTime) {
         long timeDifference = currentTime - previousTime;
         long upTimeDifference = currentUpTime - previousUpTime;
-        if (upTimeDifference <= 0) {
+        if (upTimeDifference <= 0 || timeDifference <= 0) {
             return 0;
         }
+
         return (100d * timeDifference / (double) upTimeDifference);
     }
 

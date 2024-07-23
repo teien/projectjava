@@ -46,7 +46,6 @@
             "showGPUTitle": true
         },
         "RAM": {
-            "showRamInUse": true,
             "showRamProgressBar": true,
             "showRamTotal": true,
             "showRAMTitle": true
@@ -61,9 +60,9 @@
     "Screen": {
         "alwaysOnTop": true,
         "width": 232,
-        "yc": 0,
-        "xc": 232,
-        "height": 970
+        "yc": -300,
+        "xc": 234,
+        "height": 958
     },
     "Style": {
         "bgColor": 402653183,
