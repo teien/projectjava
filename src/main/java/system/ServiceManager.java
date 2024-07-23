@@ -92,7 +92,6 @@ public class ServiceManager {
             return new HwInfo(cpuTemp, gpuTemp, gpuUsage, cpuUsage,iGpuUsage, gpuName,  cpuName);
         }
     }
-
     private static void startAndEnsureServiceRunning() {
         if (!isServiceRunning()) {
             startService();

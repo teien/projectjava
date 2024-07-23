@@ -7,6 +7,7 @@ import com.sun.jna.platform.win32.WinUser;
 import org.json.JSONObject;
 import oshi.SystemInfo;
 import oshi.hardware.*;
+import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 import oshi.util.GlobalConfig;
 import settings.SettingUI;
@@ -24,10 +25,8 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.*;
 import java.util.Timer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.function.Predicate;
 
 public class SystemMonitorUI extends JFrame {
 
@@ -232,10 +231,18 @@ public class SystemMonitorUI extends JFrame {
 
         }), 0, 1, TimeUnit.SECONDS);
         ProcessMonitor pm = new ProcessMonitor(os, cpuNumber, processListLabel);
-
+        Predicate<OSProcess> filter = process -> {
+            String name = process.getName();
+            int pid = process.getProcessID();
+            return !name.equals("Idle") && pid != 0 && !name.equals("cmd") &&
+                    !name.equals("System") && !name.equals("svchost") &&
+                    !name.equals("conhost") && !name.equals("explorer") &&
+                    !name.isEmpty();
+        };
         processExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
             if (showProcess) {
-                pm.printProcesses();
+                pm.printProcesses(filter);
+                repaint();
             }
         }), 0, 1, TimeUnit.SECONDS);
 
