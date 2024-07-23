@@ -1,7 +1,11 @@
 package system;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
+
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 import oshi.util.FormatUtil;
@@ -23,24 +27,13 @@ public class ProcessMonitor {
 
     }
 
-    public void printProcesses() {
-        List<OSProcess> processes = os.getProcesses(null, OperatingSystem.ProcessSorting.CPU_DESC, 5);
-        // bo qua process idle
-        processes.removeIf(this::isSystemIdleProcess);
-        int labelIndex = 0;
-        for (OSProcess process : processes) {
-            updateProcessInfo(process, labelIndex);
-            labelIndex++;
-            if (labelIndex >= processListLabel.length) {
-                break;
-            }
-        }
-    }
-
-    private boolean isSystemIdleProcess(OSProcess process) {
-        int pid = process.getProcessID();
-        String name = process.getName();
-        return pid == 0 || "Idle".equals(name); // Combined check for efficiency
+    public synchronized void printProcesses(Predicate<OSProcess> filter) {
+        List<OSProcess> processes = os.getProcesses(filter, OperatingSystem.ProcessSorting.CPU_DESC, 4);
+        final int[] labelIndex = {0};
+        processes.forEach(process -> {
+            updateProcessInfo(process, labelIndex[0]);
+            labelIndex[0]++;
+        });
     }
 
     private void updateProcessInfo(OSProcess process, int labelIndex) {
@@ -57,24 +50,21 @@ public class ProcessMonitor {
             previousUpTimes.put(processId, currentUpTime);
             return;
         }
-
-
-        double cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
-
+        long memory = 0;
+        memory = process.getResidentSetSize();
+        double cpuLoad = 0;
+        cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
         previousTimes.put(processId, currentTime);
         previousUpTimes.put(processId, currentUpTime);
 
-       // int usedCores = estimateUsedCores(cpuLoad);
-
-
         processName = formatProcessName(processName);
-        updateLabel(labelIndex, processName, cpuLoad, process.getResidentSetSize());
-    }
 
-    private int estimateUsedCores(double cpuLoad) {
+        updateLabel(labelIndex, processName, cpuLoad, memory);
+    }
+   /* private int estimateUsedCores(double cpuLoad) {
         int estimatedCores = (int) Math.ceil(Math.min(cpuLoad, 100.0) / 100 * cpuNumber);
         return Math.max(1, Math.min(cpuNumber, estimatedCores));
-    }
+    }*/
     private double calculateCpuLoad(long currentTime, long previousTime, long currentUpTime, long previousUpTime) {
         long timeDifference = currentTime - previousTime;
         long upTimeDifference = currentUpTime - previousUpTime;

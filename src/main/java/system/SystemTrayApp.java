@@ -113,14 +113,12 @@ public class SystemTrayApp {
         JMenuItem settingsItem = new JMenuItem("Settings");
         JMenuItem refreshMenu = new JMenuItem("Refresh");
         JMenu remoteMenu = new JMenu("Remote");
-        JMenuItem updateWeather = new JMenuItem("Weather");
-        JMenuItem updateNetwork = new JMenuItem("Network");
         JMenuItem remoteServer = new JMenuItem("Server");
         JMenuItem remoteClient = new JMenuItem("Client");
         JMenuItem restartItem = new JMenuItem("Restart");
         JMenuItem exitItem = new JMenuItem("Exit");
         menu.setBorder(new LineBorder(Color.DARK_GRAY, 1));
-        setFont(settingsItem, updateWeather, updateNetwork, remoteServer, remoteClient, restartItem, exitItem,refreshMenu,remoteMenu);
+        setFont(settingsItem, remoteServer, remoteClient, restartItem, exitItem,refreshMenu,remoteMenu);
 
 
         menu.add(settingsItem);
@@ -166,6 +164,7 @@ public class SystemTrayApp {
             try {
                 SystemMonitorUI.initializeSystemInfo();
                 SystemMonitorUI.updateWeatherInfo();
+                System.gc();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
