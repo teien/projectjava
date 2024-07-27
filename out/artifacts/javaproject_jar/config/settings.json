@@ -58,11 +58,11 @@
         "File": 49152
     },
     "Screen": {
-        "alwaysOnTop": true,
+        "alwaysOnTop": false,
         "width": 232,
         "yc": -300,
         "xc": 234,
-        "height": 958
+        "height": 990
     },
     "Style": {
         "bgColor": 402653183,

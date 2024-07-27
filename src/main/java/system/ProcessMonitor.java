@@ -1,16 +1,11 @@
 package system;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
-
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 import oshi.util.FormatUtil;
-import oshi.util.GlobalConfig;
-
 import javax.swing.*;
 
 

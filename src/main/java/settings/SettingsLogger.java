@@ -49,8 +49,7 @@ public class SettingsLogger {
                              "showCpuName": true,
                              "showCpuUsage": true,
                              "showCpuTemp": true,
-                             "cpuName": ""
-                 
+                             "cpuName": "" 
                          },
                          "GPU": {
                              "showDedicatedGPU": true,

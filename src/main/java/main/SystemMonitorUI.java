@@ -24,8 +24,8 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.*;
-import java.util.Timer;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Predicate;
 
 public class SystemMonitorUI extends JFrame {
@@ -40,7 +40,6 @@ public class SystemMonitorUI extends JFrame {
     private static JLabel cpuNameLabel;
     private static JLabel ramTotalLabel;
     private static JLabel ramInUseLabel;
-    private static JLabel ramFreeLabel;
     private static JLabel networkIPLabel;
     private static JLabel networkDownloadSpeedLabel;
     private static JLabel networkUploadSpeedLabel;
@@ -292,11 +291,11 @@ public class SystemMonitorUI extends JFrame {
         return hwnd;
     }
     public static void updateDiskInfo() {
-        String diskInfo = null;
-        String[] driveInfos = null;
+        String diskInfo;
+        AtomicReferenceArray<String> driveInfos;
             File[] drives = File.listRoots();
             if (drives != null && drives.length > 0) {
-                driveInfos = new String[drives.length];
+                driveInfos = new AtomicReferenceArray<>(new String[drives.length]);
                 for (int i = 0; i < drives.length; i++) {
                     if (drives[i].getTotalSpace() >0){
                         File drive = drives[i];
@@ -314,10 +313,10 @@ public class SystemMonitorUI extends JFrame {
                                     usableSpace / 1e12,
                                     totalSpace / 1e12);
                         }
-                        driveInfos[i] = diskInfo;
+                        driveInfos.set(i, diskInfo);
                     }
                     else {
-                        driveInfos[i] = "";
+                        driveInfos.set(i, "");
                     }
                 }
 
@@ -389,6 +388,7 @@ public class SystemMonitorUI extends JFrame {
         setBackgroundColorUpdate();
         updateLocationScreen();
         initializeSystemInfo();
+        this.setAlwaysOnTop(settings.getJSONObject("Screen").getBoolean("alwaysOnTop"));
     }
 
 
@@ -511,7 +511,7 @@ public class SystemMonitorUI extends JFrame {
                totalMemory = memory.getTotal();
                availableMemory = memory.getAvailable();
                usedMemory = totalMemory - availableMemory;
-               ramTotalInfo = String.format(" RAM:  %11.2f GiB/%.0f GiB",usedMemory/1e9, totalMemory / 1e9);
+               ramTotalInfo = String.format(" RAM:       %-5.2f GiB/%3.0f GiB",usedMemory/1e9, totalMemory / 1e9);
            } else {
                totalMemory = 0;
                usedMemory = 0;
@@ -533,12 +533,12 @@ public class SystemMonitorUI extends JFrame {
                            long usableSpace = drive.getUsableSpace();
                            long usedSpace = totalSpace - usableSpace;
                            if (totalSpace < 1e12) {
-                               diskInfo = String.format(" %s %13.2f GiB/%3.0f GiB",
+                               diskInfo = String.format(" %s        %-6.2f GiB/%3.0f GiB",
                                        driveName,
                                        usedSpace/ 1e9,
                                        totalSpace / 1e9);
                            } else {
-                               diskInfo = String.format(" %s %16.2f TB/%.0f TB",
+                               diskInfo = String.format(" %s            %-3.2f TB/%3.0f TB",
                                        driveName,
                                        usableSpace / 1e12,
                                        totalSpace / 1e12);

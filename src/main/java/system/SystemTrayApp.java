@@ -132,10 +132,6 @@ public class SystemTrayApp {
         menu.add(exitItem);
 
 
-       /* refreshMenu.add(updateWeather);
-        refreshMenu.addSeparator();
-        refreshMenu.add(updateNetwork);*/
-
         remoteMenu.add(remoteServer);
         remoteMenu.addSeparator();
         remoteMenu.add(remoteClient);
@@ -146,20 +142,6 @@ public class SystemTrayApp {
             settingsDialog.setVisible(true);
         });
 
-        /*updateWeather.addActionListener(e -> new Thread(() -> {
-            try {
-                SystemMonitorUI.updateWeatherInfo();
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }).start());*/
-        /*updateNetwork.addActionListener(e -> new Thread( () -> {
-            try {
-                SystemMonitorUI.initializeSystemInfo();
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }).start());*/
         refreshMenu.addActionListener(e -> new Thread(() -> {
             try {
                 SystemMonitorUI.initializeSystemInfo();
@@ -189,9 +171,7 @@ public class SystemTrayApp {
 
 
 
-        restartItem.addActionListener(e -> {
-            SystemMonitorUI.restart();
-        });
+        restartItem.addActionListener(e -> SystemMonitorUI.restart());
         exitItem.addActionListener(e -> System.exit(0));
 
         menu.addPopupMenuListener(new PopupMenuListener() {

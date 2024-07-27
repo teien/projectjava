@@ -61,7 +61,6 @@ public class ServiceManager {
             for (Object sensorDataObj : sensorDataArray) {
                 JSONObject sensorData = (JSONObject) sensorDataObj;
 
-                String hardwareType = (String) sensorData.get("HardwareType");
                 String hardwareName = (String) sensorData.get("HardwareName");
                 String sensorName = (String) sensorData.get("SensorName");
                 String dataType = (String) sensorData.get("DataType");

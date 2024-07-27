@@ -88,7 +88,7 @@ public class RemoteDesktopClient extends JFrame {
         remoteButton.setEnabled(true);
         remoteButton.addActionListener(e -> new SwingWorker<>() {
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Void doInBackground() {
                 try {
                     if (!checkRemoteConnection()) {
                         remoteButton.setText("Connecting...");
@@ -138,7 +138,7 @@ public class RemoteDesktopClient extends JFrame {
         });
         sendChatButton.addActionListener(e -> new SwingWorker<>() {
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Void doInBackground() {
                 try {
                     if (!checkChatConnection()) {
                         sendChatButton.setText("Sending...");
@@ -169,7 +169,7 @@ public class RemoteDesktopClient extends JFrame {
 
         callButton.addActionListener(e -> new SwingWorker<>() {
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Void doInBackground() {
                 try {
                     if (callButton.getText().equals("Call")) {
                         if (checkAudioConnection()) { //checkAudioConnection return false
@@ -257,7 +257,7 @@ public class RemoteDesktopClient extends JFrame {
         sendFileButton.addActionListener(e ->
                 new SwingWorker<>() {
                     @Override
-                    protected Void doInBackground() throws Exception {
+                    protected Void doInBackground() {
                         try {
                             if (!checkFileConnection()) {
                                 connectToFileServer(Ip4Address.getText());
@@ -648,7 +648,7 @@ public class RemoteDesktopClient extends JFrame {
     private void receiveFile() {
         new SwingWorker<Void, Void>() {
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Void doInBackground() {
                 try {
                     while (!isCancelled()) {
                         String messageType = fileDis.readUTF();
@@ -692,7 +692,7 @@ public class RemoteDesktopClient extends JFrame {
     private void startReceivingMessages() {
         new SwingWorker<Void, String>() {
             @Override
-            protected Void doInBackground() throws Exception {
+            protected Void doInBackground() {
                 while (!isCancelled() && checkChatConnection()) {
                     try {
                         String message = chatDis.readUTF();
