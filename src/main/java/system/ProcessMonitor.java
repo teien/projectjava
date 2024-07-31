@@ -70,7 +70,6 @@ public class ProcessMonitor {
             previousUpTimes.put(processId, currentUpTime);
             processName = formatProcessName(processName);
             memory = process.getResidentSetSize();
-            System.out.println("Memory: " + FormatUtil.formatBytes(memory));
             return String.format(" %-9s %5.1f %12s", processName, 0.0, FormatUtil.formatBytes(memory));
         }
 
@@ -89,7 +88,7 @@ public class ProcessMonitor {
         if (upTimeDifference <= 0) {
             return 0;
         }
-        return (100d * timeDifference / (double) upTimeDifference) / cpuNumber;
+        return (100d * timeDifference / (double) upTimeDifference) ;
     }
 
     private String formatProcessName(String processName) {
