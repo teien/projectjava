@@ -2,34 +2,61 @@ package system;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Predicate;
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
 import oshi.util.FormatUtil;
 import javax.swing.*;
 
-
 public class ProcessMonitor {
     private final OperatingSystem os;
-    private final Map<Integer, Long> previousTimes = new java.util.HashMap<>();
-    private final Map<Integer, Long> previousUpTimes = new java.util.HashMap<>();
+    private final Map<Integer, Long> previousTimes = new HashMap<>();
+    private final Map<Integer, Long> previousUpTimes = new HashMap<>();
+    private final int cpuNumber;
     private final JLabel[] processListLabel;
+    private final ExecutorService executorService;
+
     public ProcessMonitor(OperatingSystem os, int cpuNumber, JLabel[] processListLabel) {
         this.os = os;
+        this.cpuNumber = cpuNumber;
         this.processListLabel = processListLabel;
-
+        this.executorService = Executors.newFixedThreadPool(processListLabel.length);
     }
 
-    public synchronized void printProcesses(Predicate<OSProcess> filter) {
-        List<OSProcess> processes = os.getProcesses(filter, OperatingSystem.ProcessSorting.CPU_DESC, 4);
-        final int[] labelIndex = {0};
-        processes.forEach(process -> {
-            updateProcessInfo(process, labelIndex[0]);
-            labelIndex[0]++;
+    public void printProcesses(Predicate<OSProcess> filter) {
+        List<OSProcess> processes = os.getProcesses(filter, OperatingSystem.ProcessSorting.CPU_DESC, processListLabel.length);
+        Future<Map.Entry<Integer, String>>[] futures = new Future[processes.size()];
+        Map<Integer, String> processInfoMap = new HashMap<>();
+
+        for (int i = 0; i < processes.size() && i < processListLabel.length; i++) {
+            final int labelIndex = i;
+            futures[i] = executorService.submit(() -> {
+                String processInfo = updateProcessInfo(processes.get(labelIndex));
+                return Map.entry(labelIndex, processInfo);
+            });
+        }
+
+        for (Future<Map.Entry<Integer, String>> future : futures) {
+            try {
+                Map.Entry<Integer, String> entry = future.get();
+                processInfoMap.put(entry.getKey(), entry.getValue());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            for (Map.Entry<Integer, String> entry : processInfoMap.entrySet()) {
+                processListLabel[entry.getKey()].setText(entry.getValue());
+            }
         });
     }
 
-    private void updateProcessInfo(OSProcess process, int labelIndex) {
+    private String updateProcessInfo(OSProcess process) {
         int processId = process.getProcessID();
         String processName = process.getName();
         long currentTime = process.getKernelTime() + process.getUserTime();
@@ -37,46 +64,42 @@ public class ProcessMonitor {
 
         long previousTime = previousTimes.getOrDefault(processId, 0L);
         long previousUpTime = previousUpTimes.getOrDefault(processId, 0L);
-
+        long memory = process.getResidentSetSize();
         if (previousTime == 0 || previousUpTime == 0) {
             previousTimes.put(processId, currentTime);
             previousUpTimes.put(processId, currentUpTime);
-            return;
+            processName = formatProcessName(processName);
+            memory = process.getResidentSetSize();
+            System.out.println("Memory: " + FormatUtil.formatBytes(memory));
+            return String.format(" %-9s %5.1f %12s", processName, 0.0, FormatUtil.formatBytes(memory));
         }
-        long memory = 0;
-        memory = process.getResidentSetSize();
-        double cpuLoad = 0;
-        cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
+
+        double cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
         previousTimes.put(processId, currentTime);
         previousUpTimes.put(processId, currentUpTime);
 
         processName = formatProcessName(processName);
 
-        updateLabel(labelIndex, processName, cpuLoad, memory);
+        return String.format(" %-9s %5.1f %12s", processName, cpuLoad, FormatUtil.formatBytes(memory));
     }
-   /* private int estimateUsedCores(double cpuLoad) {
-        int estimatedCores = (int) Math.ceil(Math.min(cpuLoad, 100.0) / 100 * cpuNumber);
-        return Math.max(1, Math.min(cpuNumber, estimatedCores));
-    }*/
+
     private double calculateCpuLoad(long currentTime, long previousTime, long currentUpTime, long previousUpTime) {
         long timeDifference = currentTime - previousTime;
         long upTimeDifference = currentUpTime - previousUpTime;
-        if (upTimeDifference <= 0 || timeDifference <= 0) {
+        if (upTimeDifference <= 0) {
             return 0;
         }
-
-        return (100d * timeDifference / (double) upTimeDifference);
+        return (100d * timeDifference / (double) upTimeDifference) / cpuNumber;
     }
 
     private String formatProcessName(String processName) {
         if (processName.length() > 9) {
             return processName.substring(0, 9);
         }
-        String space = " ";
-        return processName + space.repeat(Math.max(0, 9 - processName.length()));
+        return String.format("%-9s", processName);
     }
 
-    private void updateLabel(int labelIndex, String processName, double cpuLoad, long residentSetSize) {
-        processListLabel[labelIndex].setText(String.format(" %-9s %5.1f %12s", processName, cpuLoad,  FormatUtil.formatBytes(residentSetSize)));
+    public void shutdown() {
+        executorService.shutdown();
     }
 }

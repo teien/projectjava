@@ -229,21 +229,24 @@ public class SystemMonitorUI extends JFrame {
             updateLocationScreen();
 
         }), 0, 1, TimeUnit.SECONDS);
-        ProcessMonitor pm = new ProcessMonitor(os, cpuNumber, processListLabel);
-        Predicate<OSProcess> filter = process -> {
-            String name = process.getName();
-            int pid = process.getProcessID();
-            return !name.equals("Idle") && pid != 0 && !name.equals("cmd") &&
-                    !name.equals("System") && !name.equals("svchost") &&
-                    !name.equals("conhost") && !name.equals("explorer") &&
-                    !name.isEmpty();
-        };
-        processExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
-            if (showProcess) {
+
+        if (showProcess) {
+            ProcessMonitor pm = new ProcessMonitor(os,cpuNumber, processListLabel);
+            Predicate<OSProcess> filter = process -> {
+                String name = process.getName();
+                int pid = process.getProcessID();
+                return !name.equals("Idle") && pid != 0 && !name.equals("cmd") &&
+                        !name.equals("System") && !name.equals("svchost") &&
+                        !name.equals("conhost") && !name.equals("explorer") &&
+                        !name.isEmpty();
+            };
+
+            processExecutor.scheduleAtFixedRate(() -> SwingUtilities.invokeLater(() -> {
                 pm.printProcesses(filter);
                 repaint();
-            }
-        }), 0, 1, TimeUnit.SECONDS);
+            }), 0, 1, TimeUnit.SECONDS);
+        }
+
 
     }
     public static void restart() {
