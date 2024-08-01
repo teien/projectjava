@@ -101,10 +101,10 @@ public class SystemMonitorUI extends JFrame {
     private static int cpuNumber;
     private NetworkMonitor downloadMonitor;
     private NetworkMonitor uploadMonitor;
-    private static final JLabel[] diskLabel = new JLabel[100];
+    private static final JLabel[] diskLabel = new JLabel[30];
 
-    private final JProgressBar[] diskProgressBars = new JProgressBar[100];
-    private final JPanel[] progressBarPanel = new JPanel[100];
+    private final JProgressBar[] diskProgressBars = new JProgressBar[30];
+    private final JPanel[] progressBarPanel = new JPanel[30];
 
     private static CentralProcessor processor;
     private static long[] ticks;
@@ -131,6 +131,7 @@ public class SystemMonitorUI extends JFrame {
             weatherUpdateExecutor.shutdown();
             checkUpdateNet.shutdown();
             processExecutor.shutdown();
+            cpuLoadExecutor.shutdown();
         }));
 
     }
@@ -193,6 +194,8 @@ public class SystemMonitorUI extends JFrame {
             }
             drives = driveListFiltered.toArray(new File[0]);
         }
+
+
     }
     private static boolean isDedicatedGPU(String gpuName) {
         String lowerCaseName = gpuName.toLowerCase();
@@ -231,7 +234,7 @@ public class SystemMonitorUI extends JFrame {
         }), 0, 1, TimeUnit.SECONDS);
 
         if (showProcess) {
-            ProcessMonitor pm = new ProcessMonitor(os,cpuNumber, processListLabel);
+            ProcessMonitor pm = new ProcessMonitor(os, processListLabel);
             Predicate<OSProcess> filter = process -> {
                 String name = process.getName();
                 int pid = process.getProcessID();
@@ -521,9 +524,9 @@ public class SystemMonitorUI extends JFrame {
            }
 
            String diskInfo = null;
-           String[] driveInfos = new String[100];
-           long[] driveTotalSpace = new long[100];
-           long[] driveUsageSpace = new long[100];
+           String[] driveInfos = new String[30];
+           long[] driveTotalSpace = new long[30];
+           long[] driveUsageSpace = new long[30];
            if (showSsd) {
                if (drives.length > 0) {
                    for (int i = 0; i < drives.length; i++) {
@@ -604,7 +607,7 @@ public class SystemMonitorUI extends JFrame {
            String finalNetworkUploadTotalInfo = networkUploadTotalInfo;
 
            String[] finalDiskInfo = new String[driveInfos.length];
-           System.arraycopy(driveInfos, 0, finalDiskInfo, 0, 100);
+           System.arraycopy(driveInfos, 0, finalDiskInfo, 0, 30);
 
            SwingUtilities.invokeLater(() -> {
                kernelLabel.setText(kernelInfo);
@@ -773,6 +776,7 @@ public class SystemMonitorUI extends JFrame {
         ramTotalLabel = createLabel(" RAM Total: 0 GiB");
         ramInUseLabel = createLabel(" In Use: 0 GiB");
         ramProgressBars = createProgressBar();
+
 
         int progressBarHeight = settings.getJSONObject("ProgressBar").optInt("progressBarHeight", 12);
         for (int i = 0; i < drives.length; i++) {

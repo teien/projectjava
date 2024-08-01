@@ -144,9 +144,10 @@ public class SystemTrayApp {
 
         refreshMenu.addActionListener(e -> new Thread(() -> {
             try {
+                System.gc();
                 SystemMonitorUI.initializeSystemInfo();
                 SystemMonitorUI.updateWeatherInfo();
-                System.gc();
+
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
