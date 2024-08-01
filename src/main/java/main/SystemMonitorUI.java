@@ -14,7 +14,6 @@ import settings.SettingUI;
 import settings.SettingsLogger;
 import settings.SettingsPanel;
 import system.*;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -75,8 +74,6 @@ public class SystemMonitorUI extends JFrame {
     private final boolean showWeather;
     private final boolean showGpu;
     private final boolean showProcess;
-
-
     private final ScheduledExecutorService systemInfoExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService weatherUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
     private final ScheduledExecutorService checkUpdateNet = Executors.newSingleThreadScheduledExecutor();
@@ -98,7 +95,6 @@ public class SystemMonitorUI extends JFrame {
             g2d.fillRect(0, 0, getWidth(), getHeight());
         }
     };
-    private static int cpuNumber;
     private NetworkMonitor downloadMonitor;
     private NetworkMonitor uploadMonitor;
     private static final JLabel[] diskLabel = new JLabel[30];
@@ -142,7 +138,6 @@ public class SystemMonitorUI extends JFrame {
         GlobalConfig.set(GlobalConfig.OSHI_OS_WINDOWS_CPU_UTILITY, true);
         processor = systemInfo.getHardware().getProcessor();
         ticks = processor.getSystemCpuLoadTicks();
-        cpuNumber = processor.getLogicalProcessorCount();
         cpuName = processor.getProcessorIdentifier().getName();
         String loadSettingCpuName = settings.getJSONObject("Show/Hide").getJSONObject("CPU").getString("cpuName");
         if(!loadSettingCpuName.isEmpty()){
@@ -211,7 +206,6 @@ public class SystemMonitorUI extends JFrame {
         }
     }
     private void startUpdateTimer() {
-        // Update weather if first time can not be done because of network issues
         if ((showNetwork) && (networkIPLabel.getText().equals(" IP: --"))) {
             checkUpdateNet.scheduleAtFixedRate(() -> {
                 initializeSystemInfo();
@@ -271,7 +265,6 @@ public class SystemMonitorUI extends JFrame {
             command.add(currentJar.getPath());
             System.out.println("Command: " + String.join(" ", command));
 
-            // Khởi chạy quá trình mới
             ProcessBuilder builder = new ProcessBuilder(command);
             builder.start();
             System.out.println("Restarting application...");
@@ -969,35 +962,28 @@ public class SystemMonitorUI extends JFrame {
                 int width = getWidth();
                 int height = getHeight();
 
-                // Vẽ nền thanh tiến trình
                 g2d.setColor(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarBackgroundColor")));
                 g2d.fillRect(0, 0, width, height);
 
-                // Vẽ thanh tiến trình
                 int progressWidth = (int) (((double) getValue() / getMaximum()) * width);
                 g2d.setColor(new Color(settings.getJSONObject("ProgressBar").getInt("progressBarForegroundColor")));
                 g2d.fillRect(0, 0, progressWidth, height);
 
-                // Vẽ bóng đổ nhẹ
                 g2d.setColor(new Color(0, 0, 0, 50)); // Bóng đổ nhẹ
                 g2d.fillRect(2, 2, progressWidth - 4, height - 4);
 
-                // Vẽ phần trăm
                 if (isStringPainted()) {
                     String progressText = getString();
                     FontMetrics fontMetrics = g2d.getFontMetrics();
                     int stringWidth = fontMetrics.stringWidth(progressText);
                     int stringHeight = fontMetrics.getAscent();
 
-                    // Tính toán vị trí để vẽ văn bản
                     int x = (width - stringWidth) / 2;
                     int y = (height + stringHeight) / 2 - 2;
 
-                    // Đặt hiệu ứng đổ bóng cho văn bản
                     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                    // Vẽ viền văn bản
-                    g2d.setColor(Color.BLACK); // Màu viền
+                    g2d.setColor(Color.BLACK);
                     for (int i = -1; i <= 1; i++) {
                         for (int j = -1; j <= 1; j++) {
                             if (i != 0 || j != 0) {
@@ -1006,8 +992,7 @@ public class SystemMonitorUI extends JFrame {
                         }
                     }
 
-                    // Vẽ văn bản chính
-                    g2d.setColor(Color.WHITE); // Màu văn bản chính
+                    g2d.setColor(Color.WHITE);
                     g2d.drawString(progressText, x, y);
                 }
             }
@@ -1018,7 +1003,7 @@ public class SystemMonitorUI extends JFrame {
         progressBar.setStringPainted(true);
         progressBar.setValue(0);
         progressBar.setString("0%");
-        progressBar.setFont(new Font("JetBrains Mono NL ExtraLight", Font.BOLD, 9));
+        progressBar.setFont(new Font("JetBrains Mono", Font.BOLD, 10));
 
         return progressBar;
     }
