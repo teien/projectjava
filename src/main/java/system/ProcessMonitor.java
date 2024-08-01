@@ -64,20 +64,19 @@ public class ProcessMonitor {
 
         long previousTime = previousTimes.getOrDefault(processId, 0L);
         long previousUpTime = previousUpTimes.getOrDefault(processId, 0L);
+
         long memory = process.getResidentSetSize();
+        processName = formatProcessName(processName);
+
         if (previousTime == 0 || previousUpTime == 0) {
             previousTimes.put(processId, currentTime);
             previousUpTimes.put(processId, currentUpTime);
-            processName = formatProcessName(processName);
-            memory = process.getResidentSetSize();
             return String.format(" %-9s %5.1f %12s", processName, 0.0, FormatUtil.formatBytes(memory));
         }
 
         double cpuLoad = calculateCpuLoad(currentTime, previousTime, currentUpTime, previousUpTime);
         previousTimes.put(processId, currentTime);
         previousUpTimes.put(processId, currentUpTime);
-
-        processName = formatProcessName(processName);
 
         return String.format(" %-9s %5.1f %12s", processName, cpuLoad, FormatUtil.formatBytes(memory));
     }
