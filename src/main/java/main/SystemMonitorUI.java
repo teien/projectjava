@@ -359,15 +359,16 @@ public class SystemMonitorUI extends JFrame {
 
     private JLabel createLabel(String text) {
         JLabel label = new JLabel(text);
+
         fontType1 = settings.getJSONObject("Style").getString("fontType1");
         int fontSize1 = settings.getJSONObject("Style").getInt("fontSize1");
         fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
         if (Objects.equals(label.getText(), "HH:mm")) {
-            label.setFont(new Font(fontType1, Font.PLAIN, 60));
+            label.setFont(new Font(fontType1, Font.BOLD, 60));
         } else if (Objects.equals(label.getText(), " EEE, dd MMM yyyy")) {
-            label.setFont(new Font(fontType1, Font.PLAIN, 20));
+            label.setFont(new Font(fontType1, Font.BOLD, 18));
         } else {
-            label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
+            label.setFont(new Font(fontType1, Font.BOLD, fontSize1));
         }
         label.setForeground(new Color(fontColor1));
         return label;
@@ -415,14 +416,14 @@ public class SystemMonitorUI extends JFrame {
         int fontSize1 = settings.getJSONObject("Style").getInt("fontSize1");
         fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
         for (JLabel label : labels) {
-            label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
+            label.setFont(new Font(fontType1, Font.BOLD, fontSize1));
             label.setForeground(new Color(fontColor1));
             if (Objects.equals(label.getName(), "timeLabel")) {
-                label.setFont(new Font(fontType1, Font.PLAIN, 60));
+                label.setFont(new Font(fontType1, Font.BOLD, 60));
                 label.setForeground(new Color(fontColor1));
             }
             if (Objects.equals(label.getName(), "dateLabel")) {
-                label.setFont(new Font(fontType1, Font.PLAIN, 20));
+                label.setFont(new Font(fontType1, Font.BOLD, 18));
                 label.setForeground(new Color(fontColor1));
             }
         }
@@ -437,7 +438,7 @@ public class SystemMonitorUI extends JFrame {
             String fontColorHex = String.format("#%06X", (0xFFFFFF & fontColor2));
             label.setText("<html><div style='font-weight: bold;'>"
                     + getPlainText(label) + "<div style='height: 2px; width:1000px;background-color: " + fontColorHex + ";'></div></div></html>");
-            label.setFont(new Font(fontType2, Font.PLAIN, fontSize2));
+            label.setFont(new Font(fontType2, Font.BOLD, fontSize2));
             label.setForeground(new Color(fontColor2));
         }
     }
@@ -456,7 +457,7 @@ public class SystemMonitorUI extends JFrame {
         String htmlText = "<html><div style='font-weight: bold;'>"
                 + text + "<div style='height: 2px; width:1000px;background-color: " + fontColorHex + ";'></div></div></html>";
         JLabel separator = new JLabel(htmlText);
-        separator.setFont(new Font(fontType2, Font.PLAIN, fontSize2));
+        separator.setFont(new Font(fontType2, Font.BOLD, fontSize2));
         separator.setForeground(new Color(fontColor2));
         separator.setBorder(new EmptyBorder(5, 0, 5, 0));
         return separator;
@@ -733,16 +734,19 @@ public class SystemMonitorUI extends JFrame {
         panel.setBackground(new Color(0, 0, 0, 0));
         setBackgroundColorUpdate();
         setOpacityUpdate();
-
-        panel.setAlignmentX(Component.CENTER_ALIGNMENT);
         timeLabel = createLabel("HH:mm");
-        timeLabel.setBorder(new EmptyBorder(0, 16,0 , 0));
+        Dimension customSizeT = timeLabel.getMaximumSize();
+        timeLabel.setBorder(new EmptyBorder(0, (w-customSizeT.width)/2-12,0 , 0));
+
+
+
         timeLabel.setName("timeLabel");
         dateLabel = createLabel(" EEE, dd MMM yyyy");
-        dateLabel.setBorder(new EmptyBorder(0, 12, 0, 0));
+        Dimension customSizeD = dateLabel.getMaximumSize();
+        dateLabel.setBorder(new EmptyBorder(0, (w-customSizeD.width)/2-8, 0, 0));
         dateLabel.setName("dateLabel");
         weatherLabel = createLabel("Weather: --");
-        weatherLabel.setBorder(new EmptyBorder(0, 4, 0, 0));
+        weatherLabel.setBorder(new EmptyBorder(0, 5, 0, 0));
         BufferedImage blankImage = new BufferedImage(50, 50, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = blankImage.createGraphics();
         g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
@@ -938,6 +942,7 @@ public class SystemMonitorUI extends JFrame {
 
             }
         }
+
         panel.add(Box.createVerticalGlue());
         add(panel);
 
