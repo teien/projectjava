@@ -71,7 +71,6 @@ public class NetworkMonitor extends JPanel {
         customizeChart(chart, color);
         ChartPanel panel = new ChartPanel(chart);
         setLayout(new GridLayout(1, 1));
-
         JSONObject settings = SettingsLogger.loadSettings();
         int wc = settings.getJSONObject("Chart").getInt("chartWidth");
         panel.setPreferredSize(new Dimension(wc, 50));
@@ -99,7 +98,7 @@ public class NetworkMonitor extends JPanel {
         chart.setTitle((String) null);
         chart.setAntiAlias(true);
         chart.setBorderVisible(false);
-        chart.setBackgroundPaint(new Color(0, 0, 0, 0)); // Set chart background to transparent
+        chart.setBackgroundPaint(new Color(0, 0, 0, 0));
 
         XYPlot plot = chart.getXYPlot();
         plot.setOutlinePaint(Color.WHITE);

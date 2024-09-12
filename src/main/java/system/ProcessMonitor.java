@@ -84,6 +84,7 @@ public class ProcessMonitor {
     private String formatProcessName(String processName) {
         if (processName.length() > 9) {
             return processName.substring(0, 9);
+
         }
         return String.format("%-9s", processName);
     }

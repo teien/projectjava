@@ -59,15 +59,15 @@
     },
     "Screen": {
         "alwaysOnTop": false,
-        "width": 232,
+        "width": 236,
         "yc": -300,
-        "xc": 270,
+        "xc": 240,
         "height": 990
     },
     "Style": {
         "bgColor": 285212671,
-        "fontType1": "JetBrains Mono NL SemiBold",
-        "fontType2": "JetBrains Mono NL ExtraLight",
+        "fontType1": "JetBrains Mono ExtraBold",
+        "fontType2": "JetBrains Mono NL Medium",
         "fontSize1": 12,
         "fontColor2": -16737895,
         "fontColor1": -3355444,

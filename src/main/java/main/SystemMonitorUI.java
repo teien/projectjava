@@ -364,11 +364,11 @@ public class SystemMonitorUI extends JFrame {
         int fontSize1 = settings.getJSONObject("Style").getInt("fontSize1");
         fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
         if (Objects.equals(label.getText(), "HH:mm")) {
-            label.setFont(new Font(fontType1, Font.BOLD, 60));
+            label.setFont(new Font(fontType1, Font.PLAIN, 60));
         } else if (Objects.equals(label.getText(), " EEE, dd MMM yyyy")) {
-            label.setFont(new Font(fontType1, Font.BOLD, 18));
+            label.setFont(new Font(fontType1, Font.PLAIN, 18));
         } else {
-            label.setFont(new Font(fontType1, Font.BOLD, fontSize1));
+            label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
         }
         label.setForeground(new Color(fontColor1));
         return label;
@@ -416,14 +416,14 @@ public class SystemMonitorUI extends JFrame {
         int fontSize1 = settings.getJSONObject("Style").getInt("fontSize1");
         fontColor1 = settings.getJSONObject("Style").optInt("fontColor1", Color.WHITE.getRGB());
         for (JLabel label : labels) {
-            label.setFont(new Font(fontType1, Font.BOLD, fontSize1));
+            label.setFont(new Font(fontType1, Font.PLAIN, fontSize1));
             label.setForeground(new Color(fontColor1));
             if (Objects.equals(label.getName(), "timeLabel")) {
-                label.setFont(new Font(fontType1, Font.BOLD, 60));
+                label.setFont(new Font(fontType1, Font.PLAIN, 60));
                 label.setForeground(new Color(fontColor1));
             }
             if (Objects.equals(label.getName(), "dateLabel")) {
-                label.setFont(new Font(fontType1, Font.BOLD, 18));
+                label.setFont(new Font(fontType1, Font.PLAIN, 18));
                 label.setForeground(new Color(fontColor1));
             }
         }
@@ -511,7 +511,7 @@ public class SystemMonitorUI extends JFrame {
                totalMemory = memory.getTotal();
                availableMemory = memory.getAvailable();
                usedMemory = totalMemory - availableMemory;
-               ramTotalInfo = String.format(" RAM:       %-5.2f GiB/%3.0f GiB",usedMemory/1e9, totalMemory / 1e9);
+               ramTotalInfo = String.format(" RAM:     %-5.2f GiB / %3.0f GiB",usedMemory/1e9, totalMemory / 1e9);
            } else {
                totalMemory = 0;
                usedMemory = 0;
@@ -533,7 +533,7 @@ public class SystemMonitorUI extends JFrame {
                            long usableSpace = drive.getUsableSpace();
                            long usedSpace = totalSpace - usableSpace;
                            if (totalSpace < 1e12) {
-                               diskInfo = String.format(" %s        %-6.2f GiB/%3.0f GiB",
+                               diskInfo = String.format(" %s      %-6.2f GiB / %3.0f GiB",
                                        driveName,
                                        usedSpace/ 1e9,
                                        totalSpace / 1e9);
@@ -1024,8 +1024,8 @@ public class SystemMonitorUI extends JFrame {
 
             JFrame dummyFrame = new JFrame();
             SettingUI settingsUI = new SettingUI(dummyFrame);
-            // settingsUI.setVisible(true);
-           // if (settingsUI.isSettingsAccepted()) {
+             settingsUI.setVisible(true);
+            if (settingsUI.isSettingsAccepted()) {
                 SystemMonitorUI ui = new SystemMonitorUI(
                         settingsUI.isCpuSelected(),
                         settingsUI.isRamSelected(),
@@ -1041,7 +1041,7 @@ public class SystemMonitorUI extends JFrame {
                 int exStyle = User32.INSTANCE.GetWindowLong(hwnd, WinUser.GWL_EXSTYLE);
                 exStyle |= WinUser.WS_EX_LAYERED | WinUser.WS_EX_TRANSPARENT;
                 User32.INSTANCE.SetWindowLong(hwnd, WinUser.GWL_EXSTYLE, exStyle);
-           // }
+            }
         });
         new Thread(SystemTrayApp::new).start();
     }
